@@ -65,10 +65,48 @@ export async function createOrder(params: {
   }
 }
 
+export interface RazorpaySubscription {
+  subscriptionId: string;
+  planId: string;
+  startAt: number;   // Unix timestamp — when ₹249/month billing begins
+  status: string;
+}
+
 /**
- * Verify payment signature on the backend.
- * Returns false (non-fatal) if backend is unreachable.
+ * Called after a successful ₹1 trial payment.
+ * The backend creates a Razorpay subscription that starts 24 hours later
+ * and auto-charges ₹249/month from the card/UPI saved during checkout.
+ * Returns null gracefully if the backend is unreachable.
  */
+export async function createSubscription(params: {
+  userId: string;
+  paymentId: string;
+}): Promise<RazorpaySubscription | null> {
+  try {
+    const base = getApiBase();
+    const url =
+      Platform.OS === "web"
+        ? `${base}/api/payments/create-subscription`
+        : `${base}/api/payments/create-subscription`;
+
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+
+    if (!resp.ok) {
+      console.warn("[Razorpay] createSubscription HTTP error:", resp.status);
+      return null;
+    }
+
+    return (await resp.json()) as RazorpaySubscription;
+  } catch (err) {
+    console.warn("[Razorpay] createSubscription network error:", err);
+    return null;
+  }
+}
+
 export async function verifyPayment(
   result: RazorpayPaymentResult
 ): Promise<boolean> {

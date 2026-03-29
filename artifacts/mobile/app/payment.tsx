@@ -20,7 +20,12 @@ import {
   trackBuyPremiumSuccess,
   trackPaymentFailed,
 } from "@/services/analytics";
-import { createOrder, verifyPayment, openRazorpayCheckout } from "@/services/razorpay";
+import {
+  createOrder,
+  createSubscription,
+  verifyPayment,
+  openRazorpayCheckout,
+} from "@/services/razorpay";
 
 const C = Colors.light;
 
@@ -74,10 +79,9 @@ export default function PaymentScreen() {
         prefill: {},
       });
 
-      // 3. Verify signature on backend (non-fatal — graceful if backend unavailable)
+      // 3. Verify ₹1 / ₹249 payment signature (non-fatal)
       await verifyPayment(paymentResult);
 
-      // 4. Activate subscription + track success
       const paymentInfo: PaymentInfo = {
         paymentId: paymentResult.razorpay_payment_id,
         orderId: paymentResult.razorpay_order_id ?? order?.orderId ?? "",
@@ -86,25 +90,52 @@ export default function PaymentScreen() {
       };
 
       if (selectedPlan === "trial") {
+        // 4a. After ₹1 payment — create the ₹249/month recurring subscription
+        //     that Razorpay will auto-debit starting 24 hours from now.
+        const subscription = await createSubscription({
+          userId,
+          paymentId: paymentResult.razorpay_payment_id,
+        });
+
         await activateTrialSubscription(paymentInfo);
+
+        await trackBuyPremiumSuccess({
+          plan: selectedPlan,
+          paymentId: paymentResult.razorpay_payment_id,
+          orderId: paymentResult.razorpay_order_id ?? order?.orderId ?? "",
+          amount,
+        });
+
+        const nextChargeDate = subscription
+          ? new Date(subscription.startAt * 1000).toLocaleDateString("en-IN", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })
+          : "tomorrow";
+
+        Alert.alert(
+          "Trial Activated! 🎉",
+          `Your 24-hour free trial starts now.\n\n₹249/month subscription begins on ${nextChargeDate} and renews automatically. Cancel anytime from Razorpay.`,
+          [{ text: "Start Exploring", onPress: () => router.replace("/(tabs)/") }]
+        );
       } else {
+        // 4b. Direct ₹249 monthly payment — activate immediately
         await activateFullSubscription(paymentInfo);
+
+        await trackBuyPremiumSuccess({
+          plan: selectedPlan,
+          paymentId: paymentResult.razorpay_payment_id,
+          orderId: paymentResult.razorpay_order_id ?? order?.orderId ?? "",
+          amount,
+        });
+
+        Alert.alert(
+          "Subscription Active! 👑",
+          "Welcome to SarkariNaukri Premium! You have full access to all features.",
+          [{ text: "Start Exploring", onPress: () => router.replace("/(tabs)/") }]
+        );
       }
-
-      await trackBuyPremiumSuccess({
-        plan: selectedPlan,
-        paymentId: paymentResult.razorpay_payment_id,
-        orderId: paymentResult.razorpay_order_id ?? order?.orderId ?? "",
-        amount,
-      });
-
-      Alert.alert(
-        selectedPlan === "trial" ? "Trial Activated! 🎉" : "Subscription Active! 👑",
-        selectedPlan === "trial"
-          ? "Your ₹1 trial is active for 24 hours. Enjoy full access to all government job listings!"
-          : "Welcome to SarkariNaukri Premium! You have full access to all features.",
-        [{ text: "Start Exploring", onPress: () => router.replace("/(tabs)/") }]
-      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Payment failed";
 

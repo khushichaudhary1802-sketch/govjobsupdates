@@ -1,0 +1,135 @@
+✅ WORKING LOGIC (Industry Standard)
+Step 1:
+
+Charge ₹1 today (trial)
+
+Step 2:
+
+Create Subscription (₹249/month)
+
+Step 3:
+
+Start subscription after trial ends (1 day delay)
+
+🚀 PART 1: Razorpay Setup
+1. Enable Subscriptions
+Go to Razorpay Dashboard
+Settings → Subscriptions → Enable
+2. Create Plan (₹249/month)
+
+Example API:
+
+POST /v1/plans
+{
+  "period": "monthly",
+  "interval": 1,
+  "item": {
+    "name": "Premium Plan",
+    "amount": 24900,
+    "currency": "INR"
+  }
+}
+
+👉 Save plan_id
+
+3. Create Subscription (with delay)
+POST /v1/subscriptions
+{
+  "plan_id": "plan_xxx",
+  "customer_notify": 1,
+  "total_count": 12,
+  "start_at": 1710000000
+}
+
+👉 start_at = current time + 1 day (trial)
+
+💳 PART 2: ₹1 Trial Payment (Frontend)
+var options = {
+  key: "YOUR_KEY",
+  amount: 100, // ₹1
+  currency: "INR",
+  name: "Your App",
+  description: "1 Day Trial",
+
+  handler: function (response) {
+    console.log("Trial Payment Success");
+
+    // 👉 CALL BACKEND TO CREATE SUBSCRIPTION
+    fetch("/create-subscription", {
+      method: "POST"
+    });
+
+    // 👉 FIRE PURCHASE EVENT
+    fbq('track', 'Purchase', {
+      value: 1,
+      currency: 'INR'
+    });
+  }
+};
+
+new Razorpay(options).open();
+🔐 PART 3: Backend (VERY IMPORTANT)
+
+Using Node.js:
+
+app.post("/create-subscription", async (req, res) => {
+  const startAt = Math.floor(Date.now() / 1000) + (24 * 60 * 60);
+
+  const response = await axios.post(
+    "https://api.razorpay.com/v1/subscriptions",
+    {
+      plan_id: "plan_xxx",
+      total_count: 12,
+      start_at: startAt
+    },
+    {
+      auth: {
+        username: "KEY_ID",
+        password: "SECRET"
+      }
+    }
+  );
+
+  res.json(response.data);
+});
+🔁 PART 4: Auto Debit Flow
+
+After 1 day:
+
+✅ Razorpay will automatically
+👉 charge ₹249 every month
+👉 from saved card/UPI
+
+🌐 PART 5: Replit Deployment
+Steps in Replit
+Add backend + frontend in same project
+Add environment variables:
+RAZORPAY_KEY
+RAZORPAY_SECRET
+Click Deploy → Autoscale
+⚠️ CRITICAL THINGS
+❌ Don’t do this mistake:
+Don’t rely only on frontend success
+✅ Must do:
+Verify ₹1 payment in backend
+Then create subscription
+💡 Better Alternative (PRO WAY)
+
+Instead of ₹1 trick:
+
+👉 Use:
+
+Free trial (no payment)
+Then subscription start
+
+OR
+
+👉 Use:
+
+First payment ₹249 only (simpler + higher approval rate)
+🚀 Final Flow Summary
+User pays ₹1
+Payment success
+Backend creates subscription
+After 1 day → ₹249 auto debit
+Monthly recurring continues
