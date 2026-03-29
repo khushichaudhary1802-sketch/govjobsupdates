@@ -8,13 +8,13 @@ import React, {
 } from "react";
 
 export type JobType =
-  | "SSC"
-  | "Banking"
-  | "Railway"
-  | "Defence"
-  | "Teaching"
-  | "State Govt"
-  | "PSU";
+  | "All India Govt Jobs"
+  | "State Govt Jobs"
+  | "Bank Jobs"
+  | "Teaching Jobs"
+  | "Engineering Jobs"
+  | "Railway Jobs"
+  | "Police/Defence Jobs";
 
 export interface UserPreferences {
   state: string;

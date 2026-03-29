@@ -19,13 +19,13 @@ import { useApp } from "@/context/AppContext";
 const C = Colors.light;
 
 const JOB_TYPE_COLORS: Record<string, string> = {
-  SSC: "#5E35B1",
-  Banking: "#1565C0",
-  Railway: "#2E7D32",
-  Defence: "#BF360C",
-  Teaching: "#F57F17",
-  "State Govt": "#00695C",
-  PSU: "#880E4F",
+  "All India Govt Jobs":  "#5E35B1",
+  "State Govt Jobs":      "#00695C",
+  "Bank Jobs":            "#1565C0",
+  "Teaching Jobs":        "#F57F17",
+  "Engineering Jobs":     "#880E4F",
+  "Railway Jobs":         "#2E7D32",
+  "Police/Defence Jobs":  "#BF360C",
 };
 
 export default function ProfileScreen() {

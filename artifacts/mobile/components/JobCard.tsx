@@ -17,13 +17,13 @@ import { useApp } from "@/context/AppContext";
 const C = Colors.light;
 
 const JOB_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
-  SSC: { bg: "#EDE7F6", text: "#5E35B1" },
-  Banking: { bg: "#E3F2FD", text: "#1565C0" },
-  Railway: { bg: "#E8F5E9", text: "#2E7D32" },
-  Defence: { bg: "#FBE9E7", text: "#BF360C" },
-  Teaching: { bg: "#FFF8E1", text: "#F57F17" },
-  "State Govt": { bg: "#E0F2F1", text: "#00695C" },
-  PSU: { bg: "#FCE4EC", text: "#880E4F" },
+  "All India Govt Jobs": { bg: "#EDE7F6", text: "#5E35B1" },
+  "State Govt Jobs":     { bg: "#E0F2F1", text: "#00695C" },
+  "Bank Jobs":           { bg: "#E3F2FD", text: "#1565C0" },
+  "Teaching Jobs":       { bg: "#FFF8E1", text: "#F57F17" },
+  "Engineering Jobs":    { bg: "#FCE4EC", text: "#880E4F" },
+  "Railway Jobs":        { bg: "#E8F5E9", text: "#2E7D32" },
+  "Police/Defence Jobs": { bg: "#FBE9E7", text: "#BF360C" },
 };
 
 interface JobCardProps {

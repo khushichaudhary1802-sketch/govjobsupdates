@@ -20,13 +20,13 @@ import { DISTRICTS_BY_STATE, INDIAN_STATES, JOB_TYPES } from "@/data/jobs";
 const C = Colors.light;
 
 const JOB_TYPE_ICONS: Record<JobType, string> = {
-  SSC: "award",
-  Banking: "credit-card",
-  Railway: "map",
-  Defence: "shield",
-  Teaching: "book-open",
-  "State Govt": "flag",
-  PSU: "briefcase",
+  "All India Govt Jobs":  "award",
+  "State Govt Jobs":      "flag",
+  "Bank Jobs":            "credit-card",
+  "Teaching Jobs":        "book-open",
+  "Engineering Jobs":     "tool",
+  "Railway Jobs":         "map",
+  "Police/Defence Jobs":  "shield",
 };
 
 export default function OnboardingScreen() {
