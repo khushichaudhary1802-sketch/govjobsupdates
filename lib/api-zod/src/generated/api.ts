@@ -14,3 +14,77 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Fetches and returns government job listings from jobkaka.com with caching
+ * @summary Get government job listings
+ */
+export const getJobsQueryPageDefault = 1;
+
+export const GetJobsQueryParams = zod.object({
+  state: zod.coerce.string().optional().describe("Filter by state name"),
+  category: zod.coerce.string().optional().describe("Filter by job category"),
+  search: zod.coerce
+    .string()
+    .optional()
+    .describe("Search by title or organization"),
+  page: zod.coerce
+    .number()
+    .default(getJobsQueryPageDefault)
+    .describe("Page number (10 items per page)"),
+});
+
+export const GetJobsResponse = zod.object({
+  jobs: zod.array(
+    zod.object({
+      id: zod.string(),
+      title: zod.string(),
+      organization: zod.string(),
+      jobType: zod.string(),
+      state: zod.string(),
+      district: zod.string(),
+      lastDate: zod.string(),
+      vacancies: zod.number(),
+      qualification: zod.string(),
+      salaryMin: zod.number(),
+      salaryMax: zod.number(),
+      applyUrl: zod.string(),
+      description: zod.string(),
+      eligibility: zod.string(),
+      isNew: zod.boolean(),
+      postedDate: zod.string(),
+      category: zod.string(),
+    }),
+  ),
+  total: zod.number(),
+  page: zod.number(),
+  totalPages: zod.number(),
+  lastFetched: zod.string(),
+});
+
+/**
+ * @summary Get a single job by ID
+ */
+export const GetJobByIdParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetJobByIdResponse = zod.object({
+  id: zod.string(),
+  title: zod.string(),
+  organization: zod.string(),
+  jobType: zod.string(),
+  state: zod.string(),
+  district: zod.string(),
+  lastDate: zod.string(),
+  vacancies: zod.number(),
+  qualification: zod.string(),
+  salaryMin: zod.number(),
+  salaryMax: zod.number(),
+  applyUrl: zod.string(),
+  description: zod.string(),
+  eligibility: zod.string(),
+  isNew: zod.boolean(),
+  postedDate: zod.string(),
+  category: zod.string(),
+});

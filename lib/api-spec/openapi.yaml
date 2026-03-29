@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: jobs
+    description: Government job listings
 paths:
   /healthz:
     get:
@@ -24,6 +26,81 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /jobs:
+    get:
+      operationId: getJobs
+      tags: [jobs]
+      summary: Get government job listings
+      description: Fetches and returns government job listings from jobkaka.com with caching
+      parameters:
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by state name
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by job category
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Search by title or organization
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+          description: Page number (10 items per page)
+      responses:
+        "200":
+          description: Job listings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobsResponse"
+        "500":
+          description: Failed to fetch jobs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /jobs/{id}:
+    get:
+      operationId: getJobById
+      tags: [jobs]
+      summary: Get a single job by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Job detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobItem"
+        "404":
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +110,86 @@ components:
           type: string
       required:
         - status
-
+    JobItem:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        organization:
+          type: string
+        jobType:
+          type: string
+        state:
+          type: string
+        district:
+          type: string
+        lastDate:
+          type: string
+        vacancies:
+          type: integer
+        qualification:
+          type: string
+        salaryMin:
+          type: integer
+        salaryMax:
+          type: integer
+        applyUrl:
+          type: string
+        description:
+          type: string
+        eligibility:
+          type: string
+        isNew:
+          type: boolean
+        postedDate:
+          type: string
+        category:
+          type: string
+      required:
+        - id
+        - title
+        - organization
+        - jobType
+        - state
+        - district
+        - lastDate
+        - vacancies
+        - qualification
+        - salaryMin
+        - salaryMax
+        - applyUrl
+        - description
+        - eligibility
+        - isNew
+        - postedDate
+        - category
+    JobsResponse:
+      type: object
+      properties:
+        jobs:
+          type: array
+          items:
+            $ref: "#/components/schemas/JobItem"
+        total:
+          type: integer
+        page:
+          type: integer
+        totalPages:
+          type: integer
+        lastFetched:
+          type: string
+      required:
+        - jobs
+        - total
+        - page
+        - totalPages
+        - lastFetched
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error

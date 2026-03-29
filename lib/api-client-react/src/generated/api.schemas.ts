@@ -8,3 +8,54 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface JobItem {
+  id: string;
+  title: string;
+  organization: string;
+  jobType: string;
+  state: string;
+  district: string;
+  lastDate: string;
+  vacancies: number;
+  qualification: string;
+  salaryMin: number;
+  salaryMax: number;
+  applyUrl: string;
+  description: string;
+  eligibility: string;
+  isNew: boolean;
+  postedDate: string;
+  category: string;
+}
+
+export interface JobsResponse {
+  jobs: JobItem[];
+  total: number;
+  page: number;
+  totalPages: number;
+  lastFetched: string;
+}
+
+export interface ErrorResponse {
+  error: string;
+}
+
+export type GetJobsParams = {
+  /**
+   * Filter by state name
+   */
+  state?: string;
+  /**
+   * Filter by job category
+   */
+  category?: string;
+  /**
+   * Search by title or organization
+   */
+  search?: string;
+  /**
+   * Page number (10 items per page)
+   */
+  page?: number;
+};
