@@ -1,20 +1,25 @@
-import { Platform, Linking } from "react-native";
+import { Platform } from "react-native";
+import * as WebBrowser from "expo-web-browser";
 
-// On web: Expo Router same-origin API route handles the proxy (proven working).
-// On native: use the public EXPO_PUBLIC_DOMAIN URL; falls back gracefully if unreachable.
-const WEB_API_BASE = (() => {
-  if (typeof window !== "undefined") return window.location.origin;
-  return "";
-})();
+// ---------------------------------------------------------------------------
+// API base URL resolution
+//
+// EXPO_PUBLIC_API_BASE: set in .env to the Expo dev domain so all API calls
+//   route through Expo Router API routes (which proxy to localhost:8080).
+//   In production this would point to the deployed API server.
+//
+// Fallback:
+//   - Web:    same origin (works when app is served on the expo subdomain)
+//   - Native: localhost:8080 (works only inside Replit container)
+// ---------------------------------------------------------------------------
+function getApiBase(): string {
+  const explicit = process.env["EXPO_PUBLIC_API_BASE"];
+  if (explicit) return explicit;
 
-const NATIVE_API_BASE = (() => {
-  const domain = process.env["EXPO_PUBLIC_DOMAIN"];
-  if (domain) return `https://${domain}/api-server`;
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    return window.location.origin;
+  }
   return "http://localhost:8080";
-})();
-
-function getApiBase() {
-  return Platform.OS === "web" ? WEB_API_BASE : NATIVE_API_BASE;
 }
 
 export interface RazorpayOrder {
@@ -29,22 +34,23 @@ export interface RazorpayPaymentResult {
   razorpay_signature?: string;
 }
 
-/**
- * Try to create a Razorpay order on the backend.
- * Returns null if the backend is unreachable — caller should degrade gracefully.
- */
+export interface RazorpaySubscription {
+  subscriptionId: string;
+  planId: string;
+  startAt: number;
+  status: string;
+}
+
+// ---------------------------------------------------------------------------
+// createOrder — try to create an order. Returns null on failure (non-fatal).
+// ---------------------------------------------------------------------------
 export async function createOrder(params: {
   amount: number;
   receipt: string;
   notes?: Record<string, string>;
 }): Promise<RazorpayOrder | null> {
   try {
-    const base = getApiBase();
-    const url =
-      Platform.OS === "web"
-        ? `${base}/api/payments/create-order`
-        : `${base}/api/payments/create-order`;
-
+    const url = `${getApiBase()}/api/payments/create-order`;
     const resp = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -56,71 +62,57 @@ export async function createOrder(params: {
       return null;
     }
 
-    const data = (await resp.json()) as RazorpayOrder;
+    const text = await resp.text();
+    if (text.trimStart().startsWith("<")) {
+      console.warn("[Razorpay] createOrder returned HTML — API route unavailable");
+      return null;
+    }
+
+    const data = JSON.parse(text) as RazorpayOrder;
     if (!data?.orderId) return null;
     return data;
   } catch (err) {
-    console.warn("[Razorpay] createOrder network error:", err);
+    console.warn("[Razorpay] createOrder error:", err);
     return null;
   }
 }
 
-export interface RazorpaySubscription {
-  subscriptionId: string;
-  planId: string;
-  startAt: number;   // Unix timestamp — when ₹249/month billing begins
-  status: string;
-}
-
-/**
- * Called after a successful ₹1 trial payment.
- * The backend creates a Razorpay subscription that starts 24 hours later
- * and auto-charges ₹249/month from the card/UPI saved during checkout.
- * Returns null gracefully if the backend is unreachable.
- */
+// ---------------------------------------------------------------------------
+// createSubscription — called after trial payment. Returns null on failure.
+// ---------------------------------------------------------------------------
 export async function createSubscription(params: {
   userId: string;
   paymentId: string;
 }): Promise<RazorpaySubscription | null> {
   try {
-    const base = getApiBase();
-    const url =
-      Platform.OS === "web"
-        ? `${base}/api/payments/create-subscription`
-        : `${base}/api/payments/create-subscription`;
-
+    const url = `${getApiBase()}/api/payments/create-subscription`;
     const resp = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(params),
     });
-
     if (!resp.ok) {
       console.warn("[Razorpay] createSubscription HTTP error:", resp.status);
       return null;
     }
-
     return (await resp.json()) as RazorpaySubscription;
   } catch (err) {
-    console.warn("[Razorpay] createSubscription network error:", err);
+    console.warn("[Razorpay] createSubscription error:", err);
     return null;
   }
 }
 
+// ---------------------------------------------------------------------------
+// verifyPayment — HMAC signature check. Returns true on failure (fail open).
+// ---------------------------------------------------------------------------
 export async function verifyPayment(
   result: RazorpayPaymentResult
 ): Promise<boolean> {
   if (!result.razorpay_order_id || !result.razorpay_signature) {
-    // Checkout was opened without an order_id — skip server verification
-    return true;
+    return true; // No order_id → signature check not possible, payment_id is real
   }
   try {
-    const base = getApiBase();
-    const url =
-      Platform.OS === "web"
-        ? `${base}/api/payments/verify-payment`
-        : `${base}/api/payments/verify-payment`;
-
+    const url = `${getApiBase()}/api/payments/verify-payment`;
     const resp = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -130,20 +122,20 @@ export async function verifyPayment(
     const data = (await resp.json()) as { verified: boolean };
     return data.verified === true;
   } catch {
-    // Verification failed — treat as verified to not block the user.
-    // The payment_id is real and captured by Razorpay regardless.
-    return true;
+    return true; // Don't block the user — payment_id is real regardless
   }
 }
 
+// ---------------------------------------------------------------------------
+// Web checkout helpers
+// ---------------------------------------------------------------------------
 function loadRazorpayScript(): Promise<void> {
   return new Promise((resolve, reject) => {
     if (typeof window === "undefined") {
-      reject(new Error("Not running in browser"));
+      reject(new Error("Not in browser"));
       return;
     }
-    const existing = document.getElementById("razorpay-checkout-js");
-    if (existing) {
+    if (document.getElementById("razorpay-checkout-js")) {
       resolve();
       return;
     }
@@ -151,65 +143,175 @@ function loadRazorpayScript(): Promise<void> {
     script.id = "razorpay-checkout-js";
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
     script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load Razorpay checkout"));
+    script.onerror = () => reject(new Error("Failed to load Razorpay script"));
     document.head.appendChild(script);
   });
 }
 
+function openWebCheckout(params: {
+  orderId?: string;
+  amount: number;
+  currency: string;
+  description: string;
+  prefill?: { name?: string; email?: string; contact?: string };
+}): Promise<RazorpayPaymentResult> {
+  const keyId = process.env["EXPO_PUBLIC_RAZORPAY_KEY_ID"] ?? "";
+
+  return new Promise((resolve, reject) => {
+    const w = window as unknown as {
+      Razorpay?: new (options: Record<string, unknown>) => { open(): void };
+    };
+    if (!w.Razorpay) {
+      reject(new Error("Razorpay SDK not loaded"));
+      return;
+    }
+
+    const options: Record<string, unknown> = {
+      key: keyId,
+      amount: params.amount,
+      currency: params.currency,
+      name: "SarkariNaukri",
+      description: params.description,
+      prefill: params.prefill ?? {},
+      theme: { color: "#1A3A6B" },
+      handler: (response: RazorpayPaymentResult) => resolve(response),
+      modal: {
+        ondismiss: () => reject(new Error("Payment cancelled")),
+      },
+    };
+
+    if (params.orderId) options["order_id"] = params.orderId;
+
+    const rzp = new w.Razorpay(options);
+    rzp.open();
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Native checkout — hosted checkout page + session polling
+// ---------------------------------------------------------------------------
+function generateSessionId(): string {
+  return `sess_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+async function pollForPayment(
+  sessionId: string,
+  apiBase: string,
+  timeoutMs: number
+): Promise<{ paymentId: string; orderId?: string; signature?: string } | null> {
+  const url = `${apiBase}/api/payments/check-session?sessionId=${encodeURIComponent(sessionId)}`;
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    await new Promise<void>((r) => setTimeout(r, 2000));
+    try {
+      const resp = await fetch(url);
+      if (resp.ok) {
+        const data = (await resp.json()) as {
+          status: string;
+          paymentId?: string;
+          orderId?: string;
+          signature?: string;
+        };
+        if (data.status === "completed" && data.paymentId) {
+          return { paymentId: data.paymentId, orderId: data.orderId, signature: data.signature };
+        }
+      }
+    } catch {
+      // network hiccup — keep polling
+    }
+  }
+  return null;
+}
+
+async function openNativeCheckout(params: {
+  amount: number;
+  description: string;
+  userId?: string;
+}): Promise<RazorpayPaymentResult> {
+  const apiBase = getApiBase();
+  const sessionId = generateSessionId();
+  // recordUrl must be publicly accessible from the user's browser
+  const recordUrl = `${apiBase}/api/payments/record-payment`;
+
+  const qs = new URLSearchParams({
+    amount: String(params.amount),
+    description: params.description,
+    sessionId,
+    userId: params.userId ?? "",
+    recordUrl,
+  });
+  const checkoutUrl = `${apiBase}/api/payments/checkout-page?${qs.toString()}`;
+
+  // Track whether polling found a result
+  let paymentResult: { paymentId: string; orderId?: string; signature?: string } | null = null;
+
+  // Open browser — this awaits until the user closes the browser
+  const browserPromise = WebBrowser.openBrowserAsync(checkoutUrl, {
+    toolbarColor: "#1A3A6B",
+    controlsColor: "#D4A017",
+    showTitle: true,
+  });
+
+  // Poll concurrently while the browser is open (max 10 min)
+  const pollPromise = pollForPayment(sessionId, apiBase, 10 * 60 * 1000);
+
+  // Race: either the browser closes or we get a payment result
+  await Promise.race([
+    browserPromise,
+    pollPromise.then((r) => {
+      paymentResult = r;
+    }),
+  ]);
+
+  // If browser closed first without a result, wait a few more seconds for record-payment POST
+  if (!paymentResult) {
+    await new Promise<void>((r) => setTimeout(r, 4000));
+    try {
+      const url = `${apiBase}/api/payments/check-session?sessionId=${encodeURIComponent(sessionId)}`;
+      const resp = await fetch(url);
+      if (resp.ok) {
+        const data = (await resp.json()) as { status: string; paymentId?: string; orderId?: string; signature?: string };
+        if (data.status === "completed" && data.paymentId) {
+          paymentResult = { paymentId: data.paymentId, orderId: data.orderId, signature: data.signature };
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  if (paymentResult) {
+    return {
+      razorpay_payment_id: paymentResult.paymentId,
+      razorpay_order_id: paymentResult.orderId,
+      razorpay_signature: paymentResult.signature,
+    };
+  }
+
+  throw new Error("Payment not completed");
+}
+
+// ---------------------------------------------------------------------------
+// openRazorpayCheckout — public API
+// ---------------------------------------------------------------------------
 export async function openRazorpayCheckout(params: {
-  orderId?: string; // optional — checkout works without it
+  orderId?: string;
   amount: number;
   currency: string;
   name: string;
   description: string;
   prefill?: { name?: string; email?: string; contact?: string };
 }): Promise<RazorpayPaymentResult> {
-  const keyId = process.env["EXPO_PUBLIC_RAZORPAY_KEY_ID"] ?? "";
-
   if (Platform.OS === "web") {
     await loadRazorpayScript();
-
-    return new Promise((resolve, reject) => {
-      const w = window as unknown as {
-        Razorpay?: new (options: Record<string, unknown>) => { open(): void };
-      };
-      if (!w.Razorpay) {
-        reject(new Error("Razorpay SDK not loaded"));
-        return;
-      }
-
-      const options: Record<string, unknown> = {
-        key: keyId,
-        amount: params.amount,
-        currency: params.currency,
-        name: "SarkariNaukri",
-        description: params.description,
-        prefill: params.prefill ?? {},
-        theme: { color: "#1A3A6B" },
-        handler: (response: RazorpayPaymentResult) => {
-          resolve(response);
-        },
-        modal: {
-          ondismiss: () => {
-            reject(new Error("Payment cancelled"));
-          },
-        },
-      };
-
-      // Only set order_id if we have one (from successful backend call)
-      if (params.orderId) {
-        options["order_id"] = params.orderId;
-      }
-
-      const rzp = new w.Razorpay(options);
-      rzp.open();
-    });
+    return openWebCheckout(params);
   }
 
-  // Native: open Razorpay payment page in device browser
-  const url = params.orderId
-    ? `https://api.razorpay.com/v1/checkout/embedded?key_id=${keyId}&order_id=${params.orderId}`
-    : `https://rzp.io/l/${keyId}`;
-  await Linking.openURL(url);
-  throw new Error("NATIVE_REDIRECT");
+  // Native — open hosted checkout page in device browser, poll for result
+  return openNativeCheckout({
+    amount: params.amount,
+    description: params.description,
+    userId: params.prefill?.name,
+  });
 }

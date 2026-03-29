@@ -57,27 +57,39 @@ export default function PaymentScreen() {
 
     try {
       const amount = PLAN_AMOUNT[selectedPlan];
+      const description =
+        selectedPlan === "trial"
+          ? "1-Day Trial – Full Access (₹249/mo after)"
+          : "Monthly Subscription – Full Access";
 
-      // 1. Try to create a Razorpay order on the backend (non-fatal if offline)
-      const order = await createOrder({
-        amount,
-        receipt: `rcpt_${userId}_${Date.now()}`,
-        notes: { userId, plan: selectedPlan },
-      });
-      // order may be null if backend is unreachable — checkout still works without it
+      let paymentResult;
 
-      // 2. Open Razorpay checkout (orderId is optional)
-      const paymentResult = await openRazorpayCheckout({
-        orderId: order?.orderId,
-        amount: order?.amount ?? amount * 100, // backend returns paise; fallback converts ₹→paise
-        currency: order?.currency ?? "INR",
-        name: "SarkariNaukri Premium",
-        description:
-          selectedPlan === "trial"
-            ? "1-Day Trial – Full Access"
-            : "Monthly Subscription – Full Access",
-        prefill: {},
-      });
+      if (Platform.OS === "web") {
+        // Web: create order then open checkout.js popup
+        const order = await createOrder({
+          amount,
+          receipt: `rcpt_${userId}_${Date.now()}`,
+          notes: { userId, plan: selectedPlan },
+        });
+
+        paymentResult = await openRazorpayCheckout({
+          orderId: order?.orderId,
+          amount: order?.amount ?? amount * 100,
+          currency: order?.currency ?? "INR",
+          name: "SarkariNaukri Premium",
+          description,
+          prefill: {},
+        });
+      } else {
+        // Native: open hosted checkout page in browser, poll for result
+        paymentResult = await openRazorpayCheckout({
+          amount: amount * 100, // paise
+          currency: "INR",
+          name: "SarkariNaukri Premium",
+          description,
+          prefill: {},
+        });
+      }
 
       // 3. Verify ₹1 / ₹249 payment signature (non-fatal)
       await verifyPayment(paymentResult);
@@ -139,14 +151,8 @@ export default function PaymentScreen() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Payment failed";
 
-      if (msg === "Payment cancelled") {
-        // User dismissed Razorpay — don't show error
-        setIsProcessing(false);
-        return;
-      }
-
-      if (msg === "NATIVE_REDIRECT") {
-        // On native, we opened the browser — let user come back
+      if (msg === "Payment cancelled" || msg === "Payment not completed") {
+        // User dismissed payment — don't show error
         setIsProcessing(false);
         return;
       }

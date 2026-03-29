@@ -25,7 +25,7 @@ async function getOrCreatePlan(razorpay: Razorpay): Promise<string> {
     interval: 1,
     item: {
       name: "SarkariNaukri Premium",
-      amount: 24900,        // ₹249 in paise
+      amount: 24900,
       currency: "INR",
       description: "Monthly access to all government job listings",
     },
@@ -35,6 +35,233 @@ async function getOrCreatePlan(razorpay: Razorpay): Promise<string> {
   console.log(`[Payments] Created Razorpay plan: ${cachedPlanId}`);
   return cachedPlanId;
 }
+
+// ---------------------------------------------------------------------------
+// Session store — tracks native checkout payment results
+// Sessions expire after 10 minutes
+// ---------------------------------------------------------------------------
+interface PaymentSession {
+  status: "pending" | "completed" | "failed";
+  paymentId?: string;
+  orderId?: string;
+  signature?: string;
+  createdAt: number;
+}
+
+const sessions = new Map<string, PaymentSession>();
+
+function cleanExpiredSessions() {
+  const cutoff = Date.now() - 10 * 60 * 1000;
+  for (const [id, session] of sessions) {
+    if (session.createdAt < cutoff) sessions.delete(id);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GET /checkout-page  — hosted Razorpay checkout page for native devices
+// Query params: amount (paise), description, sessionId, userId
+// ---------------------------------------------------------------------------
+router.get("/checkout-page", async (req, res) => {
+  const { amount, description, sessionId, userId, recordUrl: customRecordUrl } = req.query as Record<string, string>;
+
+  if (!sessionId) {
+    res.status(400).send("Missing sessionId");
+    return;
+  }
+
+  // Register session as pending
+  cleanExpiredSessions();
+  sessions.set(sessionId, { status: "pending", createdAt: Date.now() });
+
+  const keyId = process.env["RAZORPAY_KEY_ID"] ?? "";
+  const amountNum = parseInt(amount ?? "100", 10);
+  const desc = description ?? "SarkariNaukri Premium";
+
+  let orderId = "";
+  try {
+    const razorpay = getRazorpay();
+    const order = await razorpay.orders.create({
+      amount: amountNum,
+      currency: "INR",
+      receipt: `rcpt_${Date.now()}`,
+      notes: { userId: userId ?? "", sessionId },
+    });
+    orderId = order.id as string;
+  } catch (e) {
+    console.error("[Payments] checkout-page order error:", e);
+  }
+
+  const origin = `${req.protocol}://${req.get("host")}`;
+  const recordUrl = customRecordUrl || `${origin}/api/payments/record-payment`;
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>SarkariNaukri — Secure Payment</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F4F6FA;display:flex;align-items:center;justify-content:center;min-height:100vh}
+    .card{background:#fff;border-radius:20px;padding:40px 28px;text-align:center;max-width:380px;width:100%;box-shadow:0 8px 32px rgba(26,58,107,.12)}
+    .logo{font-size:52px;margin-bottom:12px}
+    h1{color:#1A3A6B;font-size:22px;font-weight:700;margin-bottom:6px}
+    .sub{color:#666;font-size:14px;margin-bottom:28px}
+    .amount{background:#F4F6FA;border-radius:12px;padding:16px;margin-bottom:24px}
+    .amount-label{color:#999;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+    .amount-value{color:#1A3A6B;font-size:32px;font-weight:800;margin-top:4px}
+    .spinner{width:36px;height:36px;border:3px solid #e0e8f5;border-top-color:#1A3A6B;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .status{color:#1A3A6B;font-size:14px;font-weight:500;min-height:20px}
+    .btn{display:none;background:#D4A017;color:#fff;border:none;padding:14px 32px;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;width:100%;margin-top:20px}
+    .btn:active{background:#b88800}
+    .success{display:none;color:#22c55e;font-size:40px;margin-bottom:12px}
+    .success-text{display:none;color:#166534;font-weight:600;font-size:16px}
+    .error-text{display:none;color:#dc2626;font-size:14px;margin-top:12px}
+    .secure{color:#999;font-size:11px;margin-top:20px}
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">🏛️</div>
+  <h1>SarkariNaukri</h1>
+  <p class="sub">Government Jobs — Premium Access</p>
+  <div class="amount">
+    <div class="amount-label">Amount to Pay</div>
+    <div class="amount-value">₹${(amountNum / 100).toFixed(0)}</div>
+  </div>
+  <div class="spinner" id="spinner"></div>
+  <div class="status" id="status">Opening secure payment...</div>
+  <button class="btn" id="payBtn" onclick="openCheckout()">Pay Now</button>
+  <div class="success" id="successIcon">✅</div>
+  <div class="success-text" id="successText">Payment successful! You can close this window and return to the app.</div>
+  <div class="error-text" id="errorText"></div>
+  <p class="secure">🔒 Secured by Razorpay</p>
+</div>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+var KEY_ID = ${JSON.stringify(keyId)};
+var ORDER_ID = ${JSON.stringify(orderId)};
+var AMOUNT = ${amountNum};
+var DESC = ${JSON.stringify(desc)};
+var SESSION_ID = ${JSON.stringify(sessionId)};
+var RECORD_URL = ${JSON.stringify(recordUrl)};
+
+function show(id){ document.getElementById(id).style.display = id === 'spinner' ? 'inline-block' : 'block'; }
+function hide(id){ document.getElementById(id).style.display = 'none'; }
+function setStatus(msg){ document.getElementById('status').textContent = msg; }
+
+async function recordPayment(paymentId, ordId, sig){
+  try {
+    await fetch(RECORD_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ sessionId: SESSION_ID, paymentId, orderId: ordId, signature: sig })
+    });
+  } catch(e){ console.warn('record failed', e); }
+}
+
+function openCheckout(){
+  hide('payBtn');
+  show('spinner');
+  setStatus('Opening secure payment...');
+  hide('errorText');
+
+  var options = {
+    key: KEY_ID,
+    amount: AMOUNT,
+    currency: 'INR',
+    name: 'SarkariNaukri',
+    description: DESC,
+    handler: async function(response){
+      setStatus('Recording payment...');
+      await recordPayment(
+        response.razorpay_payment_id,
+        response.razorpay_order_id || '',
+        response.razorpay_signature || ''
+      );
+      hide('spinner');
+      setStatus('');
+      show('successIcon');
+      show('successText');
+    },
+    modal: {
+      ondismiss: function(){
+        hide('spinner');
+        setStatus('Payment was cancelled.');
+        show('payBtn');
+        document.getElementById('payBtn').textContent = 'Try Again';
+      }
+    },
+    theme: { color: '#1A3A6B' }
+  };
+  if(ORDER_ID) options.order_id = ORDER_ID;
+
+  try {
+    var rzp = new Razorpay(options);
+    rzp.open();
+    hide('spinner');
+    setStatus('Complete payment in the window above');
+  } catch(e) {
+    hide('spinner');
+    setStatus('');
+    document.getElementById('errorText').textContent = 'Could not open payment. Please tap Pay Now.';
+    show('errorText');
+    show('payBtn');
+  }
+}
+
+window.addEventListener('load', function(){ setTimeout(openCheckout, 600); });
+</script>
+</body>
+</html>`;
+
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.setHeader("Cache-Control", "no-store");
+  res.send(html);
+});
+
+// ---------------------------------------------------------------------------
+// POST /record-payment — called by checkout page after successful payment
+// ---------------------------------------------------------------------------
+router.post("/record-payment", (req, res) => {
+  const { sessionId, paymentId, orderId, signature } = req.body as Record<string, string>;
+  if (!sessionId || !paymentId) {
+    res.status(400).json({ error: "Missing sessionId or paymentId" });
+    return;
+  }
+  sessions.set(sessionId, {
+    status: "completed",
+    paymentId,
+    orderId,
+    signature,
+    createdAt: Date.now(),
+  });
+  console.log(`[Payments] Session ${sessionId} completed: ${paymentId}`);
+  res.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// GET /check-session?sessionId=xxx — polled by native app
+// ---------------------------------------------------------------------------
+router.get("/check-session", (req, res) => {
+  const { sessionId } = req.query as Record<string, string>;
+  if (!sessionId) {
+    res.status(400).json({ error: "Missing sessionId" });
+    return;
+  }
+  const session = sessions.get(sessionId);
+  if (!session) {
+    res.json({ status: "pending" });
+    return;
+  }
+  res.json({
+    status: session.status,
+    paymentId: session.paymentId,
+    orderId: session.orderId,
+    signature: session.signature,
+  });
+});
 
 // ---------------------------------------------------------------------------
 // POST /create-order  (₹1 trial charge or direct ₹249)
@@ -55,7 +282,7 @@ router.post("/create-order", async (req, res) => {
 
     const razorpay = getRazorpay();
     const order = await razorpay.orders.create({
-      amount: Math.round(amount * 100),   // ₹ → paise
+      amount: Math.round(amount * 100),
       currency,
       receipt: receipt ?? `rcpt_${Date.now()}`,
       notes: notes ?? {},
@@ -116,9 +343,6 @@ router.post("/verify-payment", (req, res) => {
 
 // ---------------------------------------------------------------------------
 // POST /create-subscription
-//   Called after the ₹1 trial payment succeeds.
-//   1. Gets or creates the ₹249/month plan.
-//   2. Creates a subscription starting 24 hours from now.
 // ---------------------------------------------------------------------------
 router.post("/create-subscription", async (req, res) => {
   try {
@@ -128,18 +352,13 @@ router.post("/create-subscription", async (req, res) => {
     };
 
     const razorpay = getRazorpay();
-
-    // Step 1 — ensure plan exists
     const planId = await getOrCreatePlan(razorpay);
-
-    // Step 2 — subscription starts 1 day from now (trial period)
     const startAt = Math.floor(Date.now() / 1000) + 24 * 60 * 60;
 
-    // Step 3 — create subscription
     const subscription = await razorpay.subscriptions.create({
       plan_id: planId,
       customer_notify: 1,
-      total_count: 12,          // 12 months
+      total_count: 12,
       start_at: startAt,
       notes: {
         userId: userId ?? "",
