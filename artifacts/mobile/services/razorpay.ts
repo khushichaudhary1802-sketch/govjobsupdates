@@ -1,14 +1,11 @@
 import { Platform, Linking } from "react-native";
 
-// In Replit the API server is routed under /api-server on the same domain
-// On web we can use a relative path; on native we need the full domain
+// On web: use same-origin Expo Router API routes (/api/payments/...) to avoid cross-origin issues.
+// On native: call the API server directly at localhost.
 const API_BASE = (() => {
   if (Platform.OS === "web" && typeof window !== "undefined") {
-    // Use same-origin relative URL on web
-    return `${window.location.origin}/api-server`;
+    return window.location.origin;
   }
-  const domain = process.env["EXPO_PUBLIC_DOMAIN"];
-  if (domain) return `https://${domain}/api-server`;
   return "http://localhost:8080";
 })();
 
