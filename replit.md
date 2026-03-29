@@ -100,7 +100,12 @@ SarkariNaukri — Expo React Native government jobs app.
 - **Icons**: `components/Icon.tsx` — emoji/Unicode icon component; zero font dependency. All `@expo/vector-icons` usage removed.
 - **Categories** (7): All India Govt Jobs, State Govt Jobs, Bank Jobs, Teaching Jobs, Engineering Jobs, Railway Jobs, Police/Defence Jobs.
 - **Screens**: Onboarding (3-step), Payment/Paywall (₹1 trial → ₹249/month), Jobs feed (search + filter), Job detail (in-app browser), Bookmarks, Profile.
-- **Backend**: API server at `artifacts/api-server` scrapes jobkaka.com RSS for live data (30-min cache); mobile can be wired to it via `/api/jobs`.
+- **Backend**: API server at `artifacts/api-server` scrapes jobkaka.com RSS for live data (30-min cache); mobile calls `/api/jobs` for live job data.
+- **Payments**: Razorpay — backend creates orders at `/api/payments/create-order`, verifies HMAC signatures at `/api/payments/verify-payment`. Frontend opens Razorpay checkout.js (web) or device browser (native).
+- **Firebase**: `services/firebase.ts` — Firestore stores `users/{userId}` with `isPremium`, `paymentId`, `orderId`, `plan`, `date`. Firebase Analytics tracks events on web.
+- **Analytics**: `services/analytics.ts` — wraps Firebase Analytics + Meta Pixel (injected via script tag on web). Tracks: `app_open`, `buy_premium_click`, `buy_premium_success`, `payment_failed`, `feature_used`. Also fires Meta Pixel: `PageView`, `InitiateCheckout`, `Purchase`, `buy_premium_success`.
+- **User ID**: Generated once on first app load, stored in AsyncStorage (`@govtjobs_user_id`), used as Firestore document key.
+- **Env vars**: `RAZORPAY_KEY_ID` + `RAZORPAY_KEY_SECRET` (secrets), `EXPO_PUBLIC_RAZORPAY_KEY_ID` + `EXPO_PUBLIC_META_PIXEL_ID` (shared env vars for frontend).
 
 ### `scripts` (`@workspace/scripts`)
 

@@ -1,7 +1,9 @@
 import { Platform } from "react-native";
 import { trackEvent } from "./firebase";
 
-const META_PIXEL_ID = process.env["EXPO_PUBLIC_META_PIXEL_ID"] ?? "";
+const RAW_PIXEL_ID = process.env["EXPO_PUBLIC_META_PIXEL_ID"] ?? "";
+// Only use it if it looks like a valid numeric Meta Pixel ID
+const META_PIXEL_ID = /^\d{10,20}$/.test(RAW_PIXEL_ID) ? RAW_PIXEL_ID : "";
 
 function fbq(eventType: "track" | "trackCustom", eventName: string, params?: Record<string, unknown>) {
   if (Platform.OS !== "web") return;
