@@ -14,7 +14,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Icon from "@/components/Icon";
 import Colors from "@/constants/colors";
-import { useApp } from "@/context/AppContext";
+import { useApp, type PaymentInfo } from "@/context/AppContext";
+import {
+  trackBuyPremiumClick,
+  trackBuyPremiumSuccess,
+  trackPaymentFailed,
+} from "@/services/analytics";
+import { createOrder, verifyPayment, openRazorpayCheckout } from "@/services/razorpay";
 
 const C = Colors.light;
 
@@ -27,8 +33,10 @@ const PERKS = [
   { emoji: "✅", text: "Verified & authentic listings only" },
 ];
 
+const PLAN_AMOUNT = { trial: 1, monthly: 249 };
+
 export default function PaymentScreen() {
-  const { activateTrialSubscription, activateFullSubscription } = useApp();
+  const { activateTrialSubscription, activateFullSubscription, userId } = useApp();
   const insets = useSafeAreaInsets();
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<"trial" | "monthly">("trial");
@@ -36,27 +44,92 @@ export default function PaymentScreen() {
   const topPadding = Platform.OS === "web" ? 67 : insets.top + 20;
 
   const handleSubscribe = async () => {
+    if (isProcessing) return;
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    await trackBuyPremiumClick(selectedPlan);
     setIsProcessing(true);
+
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      if (selectedPlan === "trial") {
-        await activateTrialSubscription();
-        Alert.alert(
-          "Trial Activated!",
-          "Your ₹1 trial is active for 24 hours. Enjoy full access to all government job listings!",
-          [{ text: "Start Exploring", onPress: () => router.replace("/(tabs)/") }]
-        );
-      } else {
-        await activateFullSubscription();
-        Alert.alert(
-          "Subscription Active!",
-          "Welcome to SarkariNaukri Premium! You have full access to all features.",
-          [{ text: "Start Exploring", onPress: () => router.replace("/(tabs)/") }]
-        );
+      const amount = PLAN_AMOUNT[selectedPlan];
+
+      // 1. Create Razorpay order on backend
+      const order = await createOrder({
+        amount,
+        receipt: `rcpt_${userId}_${Date.now()}`,
+        notes: {
+          userId,
+          plan: selectedPlan,
+        },
+      });
+
+      // 2. Open Razorpay checkout
+      const paymentResult = await openRazorpayCheckout({
+        orderId: order.orderId,
+        amount: order.amount,
+        currency: order.currency,
+        name: "SarkariNaukri Premium",
+        description:
+          selectedPlan === "trial"
+            ? "1-Day Trial – Full Access"
+            : "Monthly Subscription – Full Access",
+        prefill: {},
+      });
+
+      // 3. Verify signature on backend
+      const verified = await verifyPayment(paymentResult);
+      if (!verified) {
+        throw new Error("Payment verification failed");
       }
-    } catch {
-      Alert.alert("Payment Failed", "Please try again.");
+
+      // 4. Activate subscription + track success
+      const paymentInfo: PaymentInfo = {
+        paymentId: paymentResult.razorpay_payment_id,
+        orderId: paymentResult.razorpay_order_id,
+        plan: selectedPlan,
+        amount,
+      };
+
+      if (selectedPlan === "trial") {
+        await activateTrialSubscription(paymentInfo);
+      } else {
+        await activateFullSubscription(paymentInfo);
+      }
+
+      await trackBuyPremiumSuccess({
+        plan: selectedPlan,
+        paymentId: paymentResult.razorpay_payment_id,
+        amount,
+      });
+
+      Alert.alert(
+        selectedPlan === "trial" ? "Trial Activated! 🎉" : "Subscription Active! 👑",
+        selectedPlan === "trial"
+          ? "Your ₹1 trial is active for 24 hours. Enjoy full access to all government job listings!"
+          : "Welcome to SarkariNaukri Premium! You have full access to all features.",
+        [{ text: "Start Exploring", onPress: () => router.replace("/(tabs)/") }]
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Payment failed";
+
+      if (msg === "Payment cancelled") {
+        // User dismissed Razorpay — don't show error
+        setIsProcessing(false);
+        return;
+      }
+
+      if (msg === "NATIVE_REDIRECT") {
+        // On native, we opened the browser — let user come back
+        setIsProcessing(false);
+        return;
+      }
+
+      await trackPaymentFailed(selectedPlan);
+      Alert.alert(
+        "Payment Failed",
+        `Something went wrong: ${msg}. Please try again.`,
+        [{ text: "OK" }]
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -137,6 +210,11 @@ export default function PaymentScreen() {
           )}
         </TouchableOpacity>
 
+        <View style={styles.securityRow}>
+          <Text style={styles.securityIcon}>🔒</Text>
+          <Text style={styles.securityText}>Secured by Razorpay · 256-bit SSL</Text>
+        </View>
+
         <TouchableOpacity
           style={[styles.subscribeButton, isProcessing && styles.buttonDisabled]}
           onPress={handleSubscribe}
@@ -147,7 +225,7 @@ export default function PaymentScreen() {
             {isProcessing
               ? "Processing..."
               : selectedPlan === "trial"
-              ? "Start ₹1 Trial"
+              ? "Pay ₹1 & Start Trial"
               : "Subscribe for ₹249/month"}
           </Text>
         </TouchableOpacity>
@@ -160,8 +238,8 @@ export default function PaymentScreen() {
         </TouchableOpacity>
 
         <Text style={styles.disclaimer}>
-          Secure payment. Cancel anytime. By subscribing, you agree to our
-          Terms of Service and Privacy Policy. Subscription auto-renews unless
+          Secure payment powered by Razorpay. Cancel anytime. By subscribing, you agree
+          to our Terms of Service and Privacy Policy. Subscription auto-renews unless
           cancelled 24 hours before the renewal date.
         </Text>
       </ScrollView>
@@ -246,6 +324,16 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 10,
   },
   bestValueText: { color: "#fff", fontSize: 9, fontWeight: "800", letterSpacing: 0.5 },
+  securityRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginBottom: 16,
+    marginTop: 4,
+  },
+  securityIcon: { fontSize: 14 },
+  securityText: { fontSize: 12, color: C.textSecondary, fontWeight: "500" },
   subscribeButton: {
     backgroundColor: C.primary,
     borderRadius: 16,

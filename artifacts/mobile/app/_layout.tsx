@@ -15,6 +15,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider, useApp } from "@/context/AppContext";
+import { trackAppOpen } from "@/services/analytics";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -22,6 +23,10 @@ const queryClient = new QueryClient();
 
 function RootLayoutNav() {
   const { isLoading, hasCompletedOnboarding, subscriptionStatus } = useApp();
+
+  useEffect(() => {
+    trackAppOpen();
+  }, []);
 
   useEffect(() => {
     if (!isLoading) {

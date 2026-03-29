@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
+import { storePremiumStatus } from "@/services/firebase";
 
 export type JobType =
   | "All India Govt Jobs"
@@ -44,6 +45,13 @@ export interface Job {
 
 export type SubscriptionStatus = "trial" | "active" | "expired" | "none";
 
+export interface PaymentInfo {
+  paymentId: string;
+  orderId: string;
+  plan: "trial" | "monthly";
+  amount: number;
+}
+
 export interface AppContextType {
   preferences: UserPreferences | null;
   setPreferences: (prefs: UserPreferences) => Promise<void>;
@@ -51,8 +59,9 @@ export interface AppContextType {
   toggleBookmark: (jobId: string) => Promise<void>;
   subscriptionStatus: SubscriptionStatus;
   trialStartDate: string | null;
-  activateTrialSubscription: () => Promise<void>;
-  activateFullSubscription: () => Promise<void>;
+  userId: string;
+  activateTrialSubscription: (payment: PaymentInfo) => Promise<void>;
+  activateFullSubscription: (payment: PaymentInfo) => Promise<void>;
   isLoading: boolean;
   hasCompletedOnboarding: boolean;
 }
@@ -65,18 +74,21 @@ const STORAGE_KEYS = {
   SUBSCRIPTION_STATUS: "@govtjobs_subscription_status",
   TRIAL_START_DATE: "@govtjobs_trial_start",
   ONBOARDING_DONE: "@govtjobs_onboarding_done",
+  USER_ID: "@govtjobs_user_id",
 };
 
+function generateUserId(): string {
+  return `user_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [preferences, setPreferencesState] = useState<UserPreferences | null>(
-    null
-  );
+  const [preferences, setPreferencesState] = useState<UserPreferences | null>(null);
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
-  const [subscriptionStatus, setSubscriptionStatus] =
-    useState<SubscriptionStatus>("none");
+  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus>("none");
   const [trialStartDate, setTrialStartDate] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
+  const [userId, setUserId] = useState<string>("");
 
   useEffect(() => {
     loadStoredData();
@@ -84,18 +96,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const loadStoredData = async () => {
     try {
-      const [prefsRaw, bookmarksRaw, subStatus, trialStart, onboardingDone] =
+      const [prefsRaw, bookmarksRaw, subStatus, trialStart, onboardingDone, userIdRaw] =
         await AsyncStorage.multiGet([
           STORAGE_KEYS.PREFERENCES,
           STORAGE_KEYS.BOOKMARKS,
           STORAGE_KEYS.SUBSCRIPTION_STATUS,
           STORAGE_KEYS.TRIAL_START_DATE,
           STORAGE_KEYS.ONBOARDING_DONE,
+          STORAGE_KEYS.USER_ID,
         ]);
 
+      // User ID — generate once and persist
+      let uid = userIdRaw[1];
+      if (!uid) {
+        uid = generateUserId();
+        await AsyncStorage.setItem(STORAGE_KEYS.USER_ID, uid);
+      }
+      setUserId(uid);
+
       if (prefsRaw[1]) setPreferencesState(JSON.parse(prefsRaw[1]));
-      if (bookmarksRaw[1])
-        setBookmarks(new Set(JSON.parse(bookmarksRaw[1]) as string[]));
+      if (bookmarksRaw[1]) setBookmarks(new Set(JSON.parse(bookmarksRaw[1]) as string[]));
+
       if (subStatus[1]) {
         const status = subStatus[1] as SubscriptionStatus;
         if (status === "trial" && trialStart[1]) {
@@ -114,7 +135,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       if (trialStart[1]) setTrialStartDate(trialStart[1]);
       if (onboardingDone[1] === "true") setHasCompletedOnboarding(true);
-    } catch (e) {
+    } catch {
+      // Silently handle storage errors
     } finally {
       setIsLoading(false);
     }
@@ -146,20 +168,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [bookmarks]
   );
 
-  const activateTrialSubscription = useCallback(async () => {
-    const now = new Date().toISOString();
-    setSubscriptionStatus("trial");
-    setTrialStartDate(now);
-    await AsyncStorage.multiSet([
-      [STORAGE_KEYS.SUBSCRIPTION_STATUS, "trial"],
-      [STORAGE_KEYS.TRIAL_START_DATE, now],
-    ]);
-  }, []);
+  const activateTrialSubscription = useCallback(
+    async (payment: PaymentInfo) => {
+      const now = new Date().toISOString();
+      setSubscriptionStatus("trial");
+      setTrialStartDate(now);
+      await AsyncStorage.multiSet([
+        [STORAGE_KEYS.SUBSCRIPTION_STATUS, "trial"],
+        [STORAGE_KEYS.TRIAL_START_DATE, now],
+      ]);
+      // Store to Firebase
+      await storePremiumStatus({
+        userId,
+        isPremium: true,
+        paymentId: payment.paymentId,
+        orderId: payment.orderId,
+        plan: payment.plan,
+        amount: payment.amount,
+      });
+    },
+    [userId]
+  );
 
-  const activateFullSubscription = useCallback(async () => {
-    setSubscriptionStatus("active");
-    await AsyncStorage.setItem(STORAGE_KEYS.SUBSCRIPTION_STATUS, "active");
-  }, []);
+  const activateFullSubscription = useCallback(
+    async (payment: PaymentInfo) => {
+      setSubscriptionStatus("active");
+      await AsyncStorage.setItem(STORAGE_KEYS.SUBSCRIPTION_STATUS, "active");
+      // Store to Firebase
+      await storePremiumStatus({
+        userId,
+        isPremium: true,
+        paymentId: payment.paymentId,
+        orderId: payment.orderId,
+        plan: payment.plan,
+        amount: payment.amount,
+      });
+    },
+    [userId]
+  );
 
   return (
     <AppContext.Provider
@@ -170,6 +216,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         toggleBookmark,
         subscriptionStatus,
         trialStartDate,
+        userId,
         activateTrialSubscription,
         activateFullSubscription,
         isLoading,
