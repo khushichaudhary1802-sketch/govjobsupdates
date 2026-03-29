@@ -1,4 +1,3 @@
-import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import { WebBrowserPresentationStyle } from "expo-web-browser";
@@ -15,6 +14,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import Icon from "@/components/Icon";
 import Colors from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
 import { SAMPLE_JOBS } from "@/data/jobs";
@@ -22,11 +22,8 @@ import { SAMPLE_JOBS } from "@/data/jobs";
 const C = Colors.light;
 
 function formatSalary(min: number, max: number): string {
-  const fmt = (n: number) =>
-    n >= 100000
-      ? `₹${(n / 100000).toFixed(1)} Lakh`
-      : `₹${(n / 1000).toFixed(0)}K`;
-  return `₹${min.toLocaleString("en-IN")} - ₹${max.toLocaleString("en-IN")}`;
+  if (!min && !max) return "As per Government norms";
+  return `₹${min.toLocaleString("en-IN")} – ₹${max.toLocaleString("en-IN")} per month`;
 }
 
 function daysUntilDeadline(lastDate: string): number {
@@ -34,6 +31,13 @@ function daysUntilDeadline(lastDate: string): number {
   const today = new Date();
   return Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
+
+const STAT_ICONS: Record<string, string> = {
+  users:         "users",
+  "map-pin":     "map-pin",
+  "dollar-sign": "dollar-sign",
+  "book-open":   "book-open",
+};
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -66,10 +70,7 @@ export default function JobDetailScreen() {
         "Subscribe to access the apply feature and view full job details.",
         [
           { text: "Cancel", style: "cancel" },
-          {
-            text: "Subscribe Now",
-            onPress: () => router.push("/payment"),
-          },
+          { text: "Subscribe Now", onPress: () => router.push("/payment") },
         ]
       );
       return;
@@ -92,15 +93,26 @@ export default function JobDetailScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
+  const stats = [
+    { icon: "users",         label: "Vacancies", value: job.vacancies.toLocaleString("en-IN") },
+    { icon: "map-pin",       label: "Location",  value: job.state },
+    { icon: "dollar-sign",   label: "Pay Scale",
+      value: job.salaryMin
+        ? `₹${(job.salaryMin / 1000).toFixed(0)}K – ₹${(job.salaryMax / 1000).toFixed(0)}K`
+        : "As per norms" },
+    { icon: "book-open",     label: "Education", value: job.qualification },
+  ];
+
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
+      {/* Nav bar */}
       <View style={styles.navBar}>
         <TouchableOpacity
           style={styles.navBtn}
           onPress={() => router.back()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Feather name="arrow-left" size={22} color={C.text} />
+          <Icon name="arrow-left" size={22} color={C.text} />
         </TouchableOpacity>
         <Text style={styles.navTitle} numberOfLines={1}>
           Job Details
@@ -110,24 +122,20 @@ export default function JobDetailScreen() {
           onPress={handleBookmark}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Feather
-            name="bookmark"
-            size={22}
-            color={isBookmarked ? C.primary : C.textMuted}
-          />
+          <Text style={[styles.bookmarkIcon, isBookmarked && styles.bookmarkActive]}>
+            🔖
+          </Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: bottomPad + 100 },
-        ]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPad + 100 }]}
       >
+        {/* Hero card */}
         <View style={styles.heroCard}>
           <View style={styles.orgLogoPlaceholder}>
-            <Feather name="briefcase" size={28} color={C.primary} />
+            <Text style={styles.orgEmoji}>💼</Text>
           </View>
           <View style={styles.heroInfo}>
             <Text style={styles.heroTitle}>{job.title}</Text>
@@ -136,38 +144,20 @@ export default function JobDetailScreen() {
               <View style={styles.heroBadge}>
                 <Text style={styles.heroBadgeText}>{job.jobType}</Text>
               </View>
-              <View style={styles.heroBadge}>
-                <Text style={styles.heroBadgeText}>{job.category}</Text>
-              </View>
+              {job.isNew && (
+                <View style={[styles.heroBadge, styles.newBadge]}>
+                  <Text style={[styles.heroBadgeText, { color: "#fff" }]}>NEW</Text>
+                </View>
+              )}
             </View>
           </View>
         </View>
 
+        {/* Stats grid */}
         <View style={styles.statsGrid}>
-          {[
-            {
-              icon: "users",
-              label: "Vacancies",
-              value: job.vacancies.toLocaleString("en-IN"),
-            },
-            {
-              icon: "map-pin",
-              label: "Location",
-              value: job.state,
-            },
-            {
-              icon: "dollar-sign",
-              label: "Pay Scale",
-              value: `₹${(job.salaryMin / 1000).toFixed(0)}K-${(job.salaryMax / 1000).toFixed(0)}K`,
-            },
-            {
-              icon: "book-open",
-              label: "Education",
-              value: job.qualification,
-            },
-          ].map((stat) => (
+          {stats.map((stat) => (
             <View key={stat.label} style={styles.statBox}>
-              <Feather name={stat.icon as any} size={16} color={C.primary} />
+              <Icon name={stat.icon} size={16} color={C.primary} />
               <Text style={styles.statBoxLabel}>{stat.label}</Text>
               <Text style={styles.statBoxValue} numberOfLines={2}>
                 {stat.value}
@@ -176,13 +166,9 @@ export default function JobDetailScreen() {
           ))}
         </View>
 
-        <View
-          style={[
-            styles.deadlineBanner,
-            { backgroundColor: deadlineColor + "18" },
-          ]}
-        >
-          <Feather name="clock" size={18} color={deadlineColor} />
+        {/* Deadline banner */}
+        <View style={[styles.deadlineBanner, { backgroundColor: deadlineColor + "18" }]}>
+          <Icon name="clock" size={18} color={deadlineColor} />
           <View>
             <Text style={[styles.deadlineLabel, { color: deadlineColor }]}>
               {daysLeft > 0
@@ -191,41 +177,31 @@ export default function JobDetailScreen() {
                 ? "Last day today!"
                 : "Deadline passed"}
             </Text>
-            <Text style={styles.deadlineDate}>
-              Last Date:{" "}
-              {new Date(job.lastDate).toLocaleDateString("en-IN", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
-            </Text>
+            <Text style={styles.deadlineDate}>Last Date: {job.lastDate}</Text>
           </View>
         </View>
 
+        {/* Sections */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>About this Role</Text>
           <Text style={styles.sectionBody}>{job.description}</Text>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Eligibility</Text>
-          <Text style={styles.sectionBody}>{job.eligibility}</Text>
-        </View>
+        {job.eligibility ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Eligibility</Text>
+            <Text style={styles.sectionBody}>{job.eligibility}</Text>
+          </View>
+        ) : null}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Salary</Text>
-          <Text style={styles.sectionBody}>
-            {`₹${job.salaryMin.toLocaleString("en-IN")} - ₹${job.salaryMax.toLocaleString("en-IN")} per month (as per 7th Pay Commission)`}
-          </Text>
+          <Text style={styles.sectionBody}>{formatSalary(job.salaryMin, job.salaryMax)}</Text>
         </View>
       </ScrollView>
 
-      <View
-        style={[
-          styles.applyBar,
-          { paddingBottom: bottomPad + 12 },
-        ]}
-      >
+      {/* Apply bar */}
+      <View style={[styles.applyBar, { paddingBottom: bottomPad + 12 }]}>
         <TouchableOpacity
           style={styles.shareBtn}
           onPress={() => {
@@ -233,14 +209,14 @@ export default function JobDetailScreen() {
             Alert.alert("Share", "Sharing feature coming soon!");
           }}
         >
-          <Feather name="share-2" size={20} color={C.primary} />
+          <Text style={styles.shareEmoji}>📤</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.applyButton}
           onPress={handleApply}
           activeOpacity={0.85}
         >
-          <Feather name="external-link" size={18} color="#fff" />
+          <Text style={styles.applyEmoji}>🌐</Text>
           <Text style={styles.applyButtonText}>Apply Now</Text>
         </TouchableOpacity>
       </View>
@@ -249,10 +225,7 @@ export default function JobDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: C.background,
-  },
+  container: { flex: 1, backgroundColor: C.background },
   navBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -271,17 +244,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  navTitle: {
-    flex: 1,
-    fontSize: 17,
-    fontWeight: "700",
-    color: C.text,
-    textAlign: "center",
-  },
-  scrollContent: {
-    padding: 16,
-    gap: 16,
-  },
+  navTitle: { flex: 1, fontSize: 17, fontWeight: "700", color: C.text, textAlign: "center" },
+  bookmarkIcon: { fontSize: 22, opacity: 0.35 },
+  bookmarkActive: { opacity: 1 },
+  scrollContent: { padding: 16, gap: 16 },
   heroCard: {
     backgroundColor: C.surface,
     borderRadius: 16,
@@ -299,40 +265,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  heroInfo: {
-    flex: 1,
-    gap: 6,
-  },
-  heroTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: C.text,
-    lineHeight: 22,
-  },
-  heroOrg: {
-    fontSize: 13,
-    color: C.textSecondary,
-  },
-  heroBadgeRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
+  orgEmoji: { fontSize: 28 },
+  heroInfo: { flex: 1, gap: 6 },
+  heroTitle: { fontSize: 16, fontWeight: "800", color: C.text, lineHeight: 22 },
+  heroOrg: { fontSize: 13, color: C.textSecondary },
+  heroBadgeRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
   heroBadge: {
     backgroundColor: C.chip,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
   },
-  heroBadgeText: {
-    fontSize: 11,
-    color: C.primary,
-    fontWeight: "700",
-  },
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
+  newBadge: { backgroundColor: "#E53935" },
+  heroBadgeText: { fontSize: 11, color: C.primary, fontWeight: "700" },
+  statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   statBox: {
     flex: 1,
     minWidth: "45%",
@@ -350,12 +296,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
-  statBoxValue: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: C.text,
-    lineHeight: 18,
-  },
+  statBoxValue: { fontSize: 13, fontWeight: "700", color: C.text, lineHeight: 18 },
   deadlineBanner: {
     flexDirection: "row",
     alignItems: "center",
@@ -363,15 +304,8 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 14,
   },
-  deadlineLabel: {
-    fontSize: 15,
-    fontWeight: "800",
-  },
-  deadlineDate: {
-    fontSize: 12,
-    color: C.textSecondary,
-    marginTop: 2,
-  },
+  deadlineLabel: { fontSize: 15, fontWeight: "800" },
+  deadlineDate: { fontSize: 12, color: C.textSecondary, marginTop: 2 },
   section: {
     backgroundColor: C.surface,
     borderRadius: 16,
@@ -380,16 +314,8 @@ const styles = StyleSheet.create({
     borderColor: C.border,
     gap: 10,
   },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: C.text,
-  },
-  sectionBody: {
-    fontSize: 14,
-    color: C.textSecondary,
-    lineHeight: 22,
-  },
+  sectionTitle: { fontSize: 15, fontWeight: "800", color: C.text },
+  sectionBody: { fontSize: 14, color: C.textSecondary, lineHeight: 22 },
   applyBar: {
     position: "absolute",
     bottom: 0,
@@ -413,6 +339,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  shareEmoji: { fontSize: 22 },
   applyButton: {
     flex: 1,
     flexDirection: "row",
@@ -428,25 +355,9 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 6,
   },
-  applyButtonText: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#fff",
-  },
-  notFound: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 16,
-  },
-  notFoundText: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: C.text,
-  },
-  goBackText: {
-    fontSize: 15,
-    color: C.primary,
-    fontWeight: "700",
-  },
+  applyEmoji: { fontSize: 18 },
+  applyButtonText: { fontSize: 16, fontWeight: "800", color: "#fff" },
+  notFound: { flex: 1, justifyContent: "center", alignItems: "center", gap: 16 },
+  notFoundText: { fontSize: 18, fontWeight: "700", color: C.text },
+  goBackText: { fontSize: 15, color: C.primary, fontWeight: "700" },
 });

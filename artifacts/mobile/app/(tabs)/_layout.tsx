@@ -3,13 +3,37 @@ import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs } from "expo-router";
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
-import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { Platform, StyleSheet, View, useColorScheme } from "react-native";
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+  useColorScheme,
+} from "react-native";
 
 import Colors from "@/constants/colors";
 
 const C = Colors.light;
+
+const TAB_EMOJI: Record<string, string> = {
+  jobs:    "💼",
+  saved:   "🔖",
+  profile: "👤",
+};
+
+function EmojiTabIcon({ emoji, color }: { emoji: string; color: string }) {
+  return (
+    <View style={tabStyles.iconWrapper}>
+      <Text style={tabStyles.emoji}>{emoji}</Text>
+    </View>
+  );
+}
+
+const tabStyles = StyleSheet.create({
+  iconWrapper: { alignItems: "center", justifyContent: "center" },
+  emoji: { fontSize: 22 },
+});
 
 function NativeTabLayout() {
   return (
@@ -75,7 +99,7 @@ function ClassicTabLayout() {
             isIOS ? (
               <SymbolView name="briefcase" tintColor={color} size={24} />
             ) : (
-              <Feather name="briefcase" size={22} color={color} />
+              <EmojiTabIcon emoji={TAB_EMOJI.jobs} color={color} />
             ),
         }}
       />
@@ -87,7 +111,7 @@ function ClassicTabLayout() {
             isIOS ? (
               <SymbolView name="bookmark" tintColor={color} size={24} />
             ) : (
-              <Feather name="bookmark" size={22} color={color} />
+              <EmojiTabIcon emoji={TAB_EMOJI.saved} color={color} />
             ),
         }}
       />
@@ -99,7 +123,7 @@ function ClassicTabLayout() {
             isIOS ? (
               <SymbolView name="person" tintColor={color} size={24} />
             ) : (
-              <Feather name="user" size={22} color={color} />
+              <EmojiTabIcon emoji={TAB_EMOJI.profile} color={color} />
             ),
         }}
       />

@@ -1,4 +1,3 @@
-import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React from "react";
@@ -10,9 +9,9 @@ import {
   View,
 } from "react-native";
 
+import Icon from "@/components/Icon";
 import Colors from "@/constants/colors";
-import { Job } from "@/context/AppContext";
-import { useApp } from "@/context/AppContext";
+import { Job, useApp } from "@/context/AppContext";
 
 const C = Colors.light;
 
@@ -38,11 +37,13 @@ function daysUntilDeadline(lastDate: string): number {
 }
 
 function formatSalary(min: number, max: number): string {
+  if (!min && !max) return "As per norms";
   const fmt = (n: number) =>
     n >= 100000
       ? `₹${(n / 100000).toFixed(1)}L`
       : `₹${(n / 1000).toFixed(0)}K`;
-  return `${fmt(min)} - ${fmt(max)}`;
+  if (min === max) return fmt(min);
+  return `${fmt(min)} – ${fmt(max)}`;
 }
 
 export default function JobCard({ job }: JobCardProps) {
@@ -55,10 +56,7 @@ export default function JobCard({ job }: JobCardProps) {
   };
 
   const handlePress = () => {
-    router.push({
-      pathname: "/job/[id]",
-      params: { id: job.id },
-    });
+    router.push({ pathname: "/job/[id]", params: { id: job.id } });
   };
 
   const handleBookmark = async () => {
@@ -78,9 +76,7 @@ export default function JobCard({ job }: JobCardProps) {
     >
       <View style={styles.header}>
         <View style={styles.typeRow}>
-          <View
-            style={[styles.typeBadge, { backgroundColor: typeColor.bg }]}
-          >
+          <View style={[styles.typeBadge, { backgroundColor: typeColor.bg }]}>
             <Text style={[styles.typeText, { color: typeColor.text }]}>
               {job.jobType}
             </Text>
@@ -95,15 +91,11 @@ export default function JobCard({ job }: JobCardProps) {
           onPress={handleBookmark}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           testID={`bookmark-${job.id}`}
+          style={styles.bookmarkBtn}
         >
-          <Feather
-            name={isBookmarked ? "bookmark" : "bookmark"}
-            size={20}
-            color={isBookmarked ? C.primary : C.textMuted}
-            style={
-              isBookmarked ? styles.bookmarkActive : styles.bookmarkInactive
-            }
-          />
+          <Text style={[styles.bookmarkIcon, isBookmarked && styles.bookmarkActive]}>
+            {isBookmarked ? "🔖" : "🔖"}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -118,13 +110,13 @@ export default function JobCard({ job }: JobCardProps) {
 
       <View style={styles.infoRow}>
         <View style={styles.infoItem}>
-          <Feather name="users" size={13} color={C.textMuted} />
+          <Icon name="users" size={13} color={C.textMuted} />
           <Text style={styles.infoText}>
             {job.vacancies.toLocaleString()} vacancies
           </Text>
         </View>
         <View style={styles.infoItem}>
-          <Feather name="dollar-sign" size={13} color={C.textMuted} />
+          <Icon name="dollar-sign" size={13} color={C.textMuted} />
           <Text style={styles.infoText}>
             {formatSalary(job.salaryMin, job.salaryMax)}
           </Text>
@@ -133,11 +125,11 @@ export default function JobCard({ job }: JobCardProps) {
 
       <View style={styles.infoRow}>
         <View style={styles.infoItem}>
-          <Feather name="map-pin" size={13} color={C.textMuted} />
+          <Icon name="map-pin" size={13} color={C.textMuted} />
           <Text style={styles.infoText}>{job.state}</Text>
         </View>
         <View style={styles.infoItem}>
-          <Feather name="book-open" size={13} color={C.textMuted} />
+          <Icon name="book-open" size={13} color={C.textMuted} />
           <Text style={styles.infoText} numberOfLines={1}>
             {job.qualification}
           </Text>
@@ -146,7 +138,7 @@ export default function JobCard({ job }: JobCardProps) {
 
       <View style={styles.footer}>
         <View style={styles.deadlineRow}>
-          <Feather name="clock" size={13} color={deadlineColor} />
+          <Icon name="clock" size={13} color={deadlineColor} />
           <Text style={[styles.deadlineText, { color: deadlineColor }]}>
             {daysLeft > 0
               ? `${daysLeft} days left`
@@ -157,7 +149,7 @@ export default function JobCard({ job }: JobCardProps) {
         </View>
         <View style={styles.applyBtn}>
           <Text style={styles.applyBtnText}>View Details</Text>
-          <Feather name="arrow-right" size={12} color={C.primary} />
+          <Icon name="arrow-right" size={13} color={C.primary} />
         </View>
       </View>
     </TouchableOpacity>
@@ -188,6 +180,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    flex: 1,
   },
   typeBadge: {
     paddingHorizontal: 10,
@@ -197,7 +190,7 @@ const styles = StyleSheet.create({
   typeText: {
     fontSize: 11,
     fontWeight: "700",
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   newBadge: {
     backgroundColor: "#E53935",
@@ -211,11 +204,15 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 0.5,
   },
-  bookmarkActive: {
-    color: C.primary,
+  bookmarkBtn: {
+    padding: 4,
   },
-  bookmarkInactive: {
-    color: C.textMuted,
+  bookmarkIcon: {
+    fontSize: 20,
+    opacity: 0.35,
+  },
+  bookmarkActive: {
+    opacity: 1,
   },
   title: {
     fontSize: 15,

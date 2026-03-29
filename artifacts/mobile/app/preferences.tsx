@@ -1,4 +1,3 @@
-import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useState } from "react";
@@ -13,6 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import Icon from "@/components/Icon";
 import Colors from "@/constants/colors";
 import { JobType, useApp } from "@/context/AppContext";
 import { DISTRICTS_BY_STATE, INDIAN_STATES, JOB_TYPES } from "@/data/jobs";
@@ -22,12 +22,8 @@ const C = Colors.light;
 export default function PreferencesScreen() {
   const { preferences, setPreferences } = useApp();
   const insets = useSafeAreaInsets();
-  const [selectedState, setSelectedState] = useState(
-    preferences?.state || ""
-  );
-  const [selectedDistrict, setSelectedDistrict] = useState(
-    preferences?.district || ""
-  );
+  const [selectedState, setSelectedState] = useState(preferences?.state || "");
+  const [selectedDistrict, setSelectedDistrict] = useState(preferences?.district || "");
   const [selectedJobTypes, setSelectedJobTypes] = useState<JobType[]>(
     preferences?.jobTypes || []
   );
@@ -47,10 +43,7 @@ export default function PreferencesScreen() {
 
   const handleSave = async () => {
     if (!selectedState || !selectedDistrict || selectedJobTypes.length === 0) {
-      Alert.alert(
-        "Incomplete",
-        "Please fill in all fields before saving."
-      );
+      Alert.alert("Incomplete", "Please fill in all fields before saving.");
       return;
     }
     await setPreferences({
@@ -70,7 +63,7 @@ export default function PreferencesScreen() {
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.navBar}>
         <TouchableOpacity style={styles.navBtn} onPress={() => router.back()}>
-          <Feather name="arrow-left" size={22} color={C.text} />
+          <Icon name="arrow-left" size={22} color={C.text} />
         </TouchableOpacity>
         <Text style={styles.navTitle}>Preferences</Text>
         <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
@@ -80,46 +73,28 @@ export default function PreferencesScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.content,
-          { paddingBottom: bottomPad + 24 },
-        ]}
+        contentContainerStyle={[styles.content, { paddingBottom: bottomPad + 24 }]}
       >
         <Text style={styles.label}>State</Text>
         <TouchableOpacity
           style={styles.pickerButton}
-          onPress={() => {
-            setShowStateList(!showStateList);
-            setShowDistrictList(false);
-          }}
+          onPress={() => { setShowStateList(!showStateList); setShowDistrictList(false); }}
         >
-          <Text
-            style={[
-              styles.pickerText,
-              selectedState ? styles.pickerTextSelected : {},
-            ]}
-          >
+          <Text style={[styles.pickerText, selectedState ? styles.pickerTextSelected : {}]}>
             {selectedState || "Select State"}
           </Text>
-          <Feather
+          <Icon
             name={showStateList ? "chevron-up" : "chevron-down"}
-            size={20}
+            size={18}
             color={C.textSecondary}
           />
         </TouchableOpacity>
         {showStateList && (
-          <ScrollView
-            style={styles.dropdownList}
-            nestedScrollEnabled
-            showsVerticalScrollIndicator
-          >
+          <ScrollView style={styles.dropdownList} nestedScrollEnabled showsVerticalScrollIndicator>
             {INDIAN_STATES.map((state) => (
               <TouchableOpacity
                 key={state}
-                style={[
-                  styles.dropdownItem,
-                  selectedState === state && styles.dropdownItemSelected,
-                ]}
+                style={[styles.dropdownItem, selectedState === state && styles.dropdownItemSelected]}
                 onPress={() => {
                   setSelectedState(state);
                   setSelectedDistrict("");
@@ -135,9 +110,7 @@ export default function PreferencesScreen() {
                 >
                   {state}
                 </Text>
-                {selectedState === state && (
-                  <Feather name="check" size={16} color={C.primary} />
-                )}
+                {selectedState === state && <Icon name="check" size={14} color={C.primary} />}
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -146,31 +119,19 @@ export default function PreferencesScreen() {
         <Text style={[styles.label, { marginTop: 16 }]}>District</Text>
         <TouchableOpacity
           style={styles.pickerButton}
-          onPress={() => {
-            setShowDistrictList(!showDistrictList);
-            setShowStateList(false);
-          }}
+          onPress={() => { setShowDistrictList(!showDistrictList); setShowStateList(false); }}
         >
-          <Text
-            style={[
-              styles.pickerText,
-              selectedDistrict ? styles.pickerTextSelected : {},
-            ]}
-          >
+          <Text style={[styles.pickerText, selectedDistrict ? styles.pickerTextSelected : {}]}>
             {selectedDistrict || "Select District"}
           </Text>
-          <Feather
+          <Icon
             name={showDistrictList ? "chevron-up" : "chevron-down"}
-            size={20}
+            size={18}
             color={C.textSecondary}
           />
         </TouchableOpacity>
         {showDistrictList && (
-          <ScrollView
-            style={styles.dropdownList}
-            nestedScrollEnabled
-            showsVerticalScrollIndicator
-          >
+          <ScrollView style={styles.dropdownList} nestedScrollEnabled showsVerticalScrollIndicator>
             {[...districts, "All Districts"].map((district) => (
               <TouchableOpacity
                 key={district}
@@ -187,14 +148,13 @@ export default function PreferencesScreen() {
                 <Text
                   style={[
                     styles.dropdownItemText,
-                    selectedDistrict === district &&
-                      styles.dropdownItemTextSelected,
+                    selectedDistrict === district && styles.dropdownItemTextSelected,
                   ]}
                 >
                   {district}
                 </Text>
                 {selectedDistrict === district && (
-                  <Feather name="check" size={16} color={C.primary} />
+                  <Icon name="check" size={14} color={C.primary} />
                 )}
               </TouchableOpacity>
             ))}
@@ -211,17 +171,10 @@ export default function PreferencesScreen() {
                 style={[styles.typeChip, selected && styles.typeChipSelected]}
                 onPress={() => toggleJobType(type)}
               >
-                <Text
-                  style={[
-                    styles.typeChipText,
-                    selected && styles.typeChipTextSelected,
-                  ]}
-                >
+                <Text style={[styles.typeChipText, selected && styles.typeChipTextSelected]}>
                   {type}
                 </Text>
-                {selected && (
-                  <Feather name="check" size={14} color="#fff" />
-                )}
+                {selected && <Icon name="check" size={12} color="#fff" />}
               </TouchableOpacity>
             );
           })}
@@ -232,10 +185,7 @@ export default function PreferencesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: C.background,
-  },
+  container: { flex: 1, backgroundColor: C.background },
   navBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -254,26 +204,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  navTitle: {
-    flex: 1,
-    fontSize: 17,
-    fontWeight: "700",
-    color: C.text,
-  },
-  saveBtn: {
-    backgroundColor: C.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
-  saveBtnText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 14,
-  },
-  content: {
-    padding: 20,
-  },
+  navTitle: { flex: 1, fontSize: 17, fontWeight: "700", color: C.text },
+  saveBtn: { backgroundColor: C.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10 },
+  saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  content: { padding: 20 },
   label: {
     fontSize: 13,
     fontWeight: "700",
@@ -294,14 +228,8 @@ const styles = StyleSheet.create({
     borderColor: C.border,
     marginBottom: 8,
   },
-  pickerText: {
-    fontSize: 15,
-    color: C.textMuted,
-    fontWeight: "500",
-  },
-  pickerTextSelected: {
-    color: C.text,
-  },
+  pickerText: { fontSize: 15, color: C.textMuted, fontWeight: "500" },
+  pickerTextSelected: { color: C.text },
   dropdownList: {
     backgroundColor: C.surface,
     borderRadius: 14,
@@ -319,22 +247,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: C.border,
   },
-  dropdownItemSelected: {
-    backgroundColor: C.chip,
-  },
-  dropdownItemText: {
-    fontSize: 14,
-    color: C.text,
-  },
-  dropdownItemTextSelected: {
-    color: C.primary,
-    fontWeight: "700",
-  },
-  jobTypesGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
+  dropdownItemSelected: { backgroundColor: C.chip },
+  dropdownItemText: { fontSize: 14, color: C.text },
+  dropdownItemTextSelected: { color: C.primary, fontWeight: "700" },
+  jobTypesGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   typeChip: {
     flexDirection: "row",
     alignItems: "center",
@@ -346,16 +262,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: C.border,
   },
-  typeChipSelected: {
-    backgroundColor: C.primary,
-    borderColor: C.primary,
-  },
-  typeChipText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: C.textSecondary,
-  },
-  typeChipTextSelected: {
-    color: "#fff",
-  },
+  typeChipSelected: { backgroundColor: C.primary, borderColor: C.primary },
+  typeChipText: { fontSize: 13, fontWeight: "700", color: C.textSecondary },
+  typeChipTextSelected: { color: "#fff" },
 });

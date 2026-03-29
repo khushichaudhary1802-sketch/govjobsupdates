@@ -1,4 +1,3 @@
-import { Feather } from "@expo/vector-icons";
 import React, { useMemo } from "react";
 import {
   FlatList,
@@ -40,8 +39,7 @@ export default function BookmarksScreen() {
         contentContainerStyle={[
           styles.listContent,
           {
-            paddingBottom:
-              Platform.OS === "web" ? 34 + 84 : insets.bottom + 84,
+            paddingBottom: Platform.OS === "web" ? 34 + 84 : insets.bottom + 84,
           },
         ]}
         showsVerticalScrollIndicator={false}
@@ -49,7 +47,7 @@ export default function BookmarksScreen() {
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <View style={styles.emptyIconWrapper}>
-              <Feather name="bookmark" size={40} color={C.textMuted} />
+              <Text style={styles.emptyEmoji}>🔖</Text>
             </View>
             <Text style={styles.emptyTitle}>No Saved Jobs</Text>
             <Text style={styles.emptySubtitle}>
@@ -63,10 +61,7 @@ export default function BookmarksScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: C.background,
-  },
+  container: { flex: 1, backgroundColor: C.background },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -77,20 +72,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: C.border,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: C.text,
-  },
-  count: {
-    fontSize: 13,
-    color: C.textSecondary,
-    fontWeight: "600",
-  },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-  },
+  title: { fontSize: 22, fontWeight: "800", color: C.text },
+  count: { fontSize: 13, color: C.textSecondary, fontWeight: "600" },
+  listContent: { paddingHorizontal: 16, paddingTop: 12 },
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
@@ -106,6 +90,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
+  emptyEmoji: { fontSize: 36 },
   emptyTitle: {
     fontSize: 18,
     fontWeight: "700",

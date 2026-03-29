@@ -1,4 +1,3 @@
-import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
@@ -15,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import FilterChips from "@/components/FilterChips";
+import Icon from "@/components/Icon";
 import JobCard from "@/components/JobCard";
 import Colors from "@/constants/colors";
 import { JobType, useApp } from "@/context/AppContext";
@@ -23,7 +23,7 @@ import { SAMPLE_JOBS, getFilteredJobs } from "@/data/jobs";
 const C = Colors.light;
 
 export default function HomeScreen() {
-  const { preferences, isLoading, bookmarks } = useApp();
+  const { preferences, isLoading } = useApp();
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState<JobType | null>(null);
@@ -51,8 +51,8 @@ export default function HomeScreen() {
 
   const headerComponent = (
     <>
-      <View style={[styles.searchBar]}>
-        <Feather name="search" size={18} color={C.textMuted} />
+      <View style={styles.searchBar}>
+        <Icon name="search" size={18} color={C.textMuted} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search jobs, organizations..."
@@ -64,7 +64,7 @@ export default function HomeScreen() {
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity onPress={() => setSearchQuery("")}>
-            <Feather name="x" size={18} color={C.textMuted} />
+            <Icon name="x" size={18} color={C.textMuted} />
           </TouchableOpacity>
         )}
       </View>
@@ -77,10 +77,10 @@ export default function HomeScreen() {
           {filteredJobs.length} Jobs Found
         </Text>
         {preferences && (
-          <Text style={styles.locationLabel}>
-            <Feather name="map-pin" size={12} color={C.textSecondary} />{" "}
-            {preferences.state}
-          </Text>
+          <View style={styles.locationRow}>
+            <Icon name="map-pin" size={12} color={C.textSecondary} />
+            <Text style={styles.locationLabel}>{preferences.state}</Text>
+          </View>
         )}
       </View>
     </>
@@ -91,7 +91,7 @@ export default function HomeScreen() {
       <View style={styles.topHeader}>
         <View>
           <Text style={styles.greeting}>
-            {preferences ? `Hi there!` : "Welcome"}
+            {preferences ? "Hi there!" : "Welcome"}
           </Text>
           <Text style={styles.headline}>Government Jobs</Text>
         </View>
@@ -100,7 +100,7 @@ export default function HomeScreen() {
           onPress={() => router.push("/preferences")}
           testID="preferences-button"
         >
-          <Feather name="sliders" size={20} color={C.primary} />
+          <Icon name="sliders" size={20} color={C.primary} />
         </TouchableOpacity>
       </View>
 
@@ -112,15 +112,14 @@ export default function HomeScreen() {
         contentContainerStyle={[
           styles.listContent,
           {
-            paddingBottom:
-              Platform.OS === "web" ? 34 + 84 : insets.bottom + 84,
+            paddingBottom: Platform.OS === "web" ? 34 + 84 : insets.bottom + 84,
           },
         ]}
         showsVerticalScrollIndicator={false}
         scrollEnabled={filteredJobs.length > 0}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Feather name="inbox" size={48} color={C.border} />
+            <Text style={styles.emptyIcon}>📭</Text>
             <Text style={styles.emptyTitle}>No Jobs Found</Text>
             <Text style={styles.emptySubtitle}>
               Try adjusting your filters or search query
@@ -133,10 +132,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: C.background,
-  },
+  container: { flex: 1, backgroundColor: C.background },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
@@ -154,16 +150,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: C.border,
   },
-  greeting: {
-    fontSize: 12,
-    color: C.textSecondary,
-    fontWeight: "500",
-  },
-  headline: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: C.text,
-  },
+  greeting: { fontSize: 12, color: C.textSecondary, fontWeight: "500" },
+  headline: { fontSize: 22, fontWeight: "800", color: C.text },
   settingsBtn: {
     width: 42,
     height: 42,
@@ -195,18 +183,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
   },
-  resultsCount: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: C.text,
-  },
-  locationLabel: {
-    fontSize: 12,
-    color: C.textSecondary,
-  },
-  listContent: {
-    paddingHorizontal: 16,
-  },
+  resultsCount: { fontSize: 13, fontWeight: "700", color: C.text },
+  locationRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  locationLabel: { fontSize: 12, color: C.textSecondary },
+  listContent: { paddingHorizontal: 16 },
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
@@ -214,11 +194,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     gap: 12,
   },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: C.text,
-  },
+  emptyIcon: { fontSize: 48 },
+  emptyTitle: { fontSize: 18, fontWeight: "700", color: C.text },
   emptySubtitle: {
     fontSize: 14,
     color: C.textSecondary,

@@ -1,4 +1,3 @@
-import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useState } from "react";
@@ -13,71 +12,54 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import Icon from "@/components/Icon";
 import Colors from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
 
 const C = Colors.light;
 
 const PERKS = [
-  { icon: "bell", text: "Real-time job alerts" },
-  { icon: "filter", text: "Advanced filtering by state & category" },
-  { icon: "bookmark", text: "Unlimited bookmarks" },
-  { icon: "globe", text: "Apply via official website" },
-  { icon: "trending-up", text: "10,000+ government jobs updated daily" },
-  { icon: "shield", text: "Verified & authentic listings only" },
+  { emoji: "🔔", text: "Real-time job alerts" },
+  { emoji: "🎯", text: "Advanced filtering by state & category" },
+  { emoji: "🔖", text: "Unlimited bookmarks" },
+  { emoji: "🌐", text: "Apply via official website" },
+  { emoji: "📈", text: "10,000+ government jobs updated daily" },
+  { emoji: "✅", text: "Verified & authentic listings only" },
 ];
 
 export default function PaymentScreen() {
   const { activateTrialSubscription, activateFullSubscription } = useApp();
   const insets = useSafeAreaInsets();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<"trial" | "monthly">(
-    "trial"
-  );
+  const [selectedPlan, setSelectedPlan] = useState<"trial" | "monthly">("trial");
 
   const topPadding = Platform.OS === "web" ? 67 : insets.top + 20;
 
   const handleSubscribe = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsProcessing(true);
-
     try {
       await new Promise((resolve) => setTimeout(resolve, 1500));
-
       if (selectedPlan === "trial") {
         await activateTrialSubscription();
         Alert.alert(
           "Trial Activated!",
           "Your ₹1 trial is active for 24 hours. Enjoy full access to all government job listings!",
-          [
-            {
-              text: "Start Exploring",
-              onPress: () => router.replace("/(tabs)/"),
-            },
-          ]
+          [{ text: "Start Exploring", onPress: () => router.replace("/(tabs)/") }]
         );
       } else {
         await activateFullSubscription();
         Alert.alert(
           "Subscription Active!",
           "Welcome to SarkariNaukri Premium! You have full access to all features.",
-          [
-            {
-              text: "Start Exploring",
-              onPress: () => router.replace("/(tabs)/"),
-            },
-          ]
+          [{ text: "Start Exploring", onPress: () => router.replace("/(tabs)/") }]
         );
       }
-    } catch (e) {
+    } catch {
       Alert.alert("Payment Failed", "Please try again.");
     } finally {
       setIsProcessing(false);
     }
-  };
-
-  const handleSkip = () => {
-    router.replace("/(tabs)/");
   };
 
   return (
@@ -86,15 +68,12 @@ export default function PaymentScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.content,
-          {
-            paddingBottom:
-              Platform.OS === "web" ? 34 : insets.bottom + 24,
-          },
+          { paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 24 },
         ]}
       >
         <View style={styles.headerSection}>
           <View style={styles.crownContainer}>
-            <Feather name="award" size={32} color={C.accent} />
+            <Text style={styles.crownEmoji}>👑</Text>
           </View>
           <Text style={styles.title}>Unlock Full Access</Text>
           <Text style={styles.subtitle}>
@@ -107,7 +86,7 @@ export default function PaymentScreen() {
           {PERKS.map((perk, i) => (
             <View key={i} style={styles.perkRow}>
               <View style={styles.perkIcon}>
-                <Feather name={perk.icon as any} size={16} color={C.primary} />
+                <Text style={styles.perkEmoji}>{perk.emoji}</Text>
               </View>
               <Text style={styles.perkText}>{perk.text}</Text>
             </View>
@@ -117,14 +96,8 @@ export default function PaymentScreen() {
         <Text style={styles.plansLabel}>Choose Your Plan</Text>
 
         <TouchableOpacity
-          style={[
-            styles.planCard,
-            selectedPlan === "trial" && styles.planCardSelected,
-          ]}
-          onPress={() => {
-            setSelectedPlan("trial");
-            Haptics.selectionAsync();
-          }}
+          style={[styles.planCard, selectedPlan === "trial" && styles.planCardSelected]}
+          onPress={() => { setSelectedPlan("trial"); Haptics.selectionAsync(); }}
         >
           <View style={styles.planHeader}>
             <View>
@@ -144,14 +117,8 @@ export default function PaymentScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[
-            styles.planCard,
-            selectedPlan === "monthly" && styles.planCardSelected,
-          ]}
-          onPress={() => {
-            setSelectedPlan("monthly");
-            Haptics.selectionAsync();
-          }}
+          style={[styles.planCard, selectedPlan === "monthly" && styles.planCardSelected]}
+          onPress={() => { setSelectedPlan("monthly"); Haptics.selectionAsync(); }}
         >
           <View style={styles.planHeader}>
             <View>
@@ -185,7 +152,10 @@ export default function PaymentScreen() {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={handleSkip} style={styles.skipButton}>
+        <TouchableOpacity
+          onPress={() => router.replace("/(tabs)/")}
+          style={styles.skipButton}
+        >
           <Text style={styles.skipText}>Skip for now</Text>
         </TouchableOpacity>
 
@@ -200,17 +170,9 @@ export default function PaymentScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: C.background,
-  },
-  content: {
-    paddingHorizontal: 20,
-  },
-  headerSection: {
-    alignItems: "center",
-    marginBottom: 24,
-  },
+  container: { flex: 1, backgroundColor: C.background },
+  content: { paddingHorizontal: 20 },
+  headerSection: { alignItems: "center", marginBottom: 24 },
   crownContainer: {
     width: 72,
     height: 72,
@@ -222,6 +184,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: C.accent,
   },
+  crownEmoji: { fontSize: 36 },
   title: {
     fontSize: 26,
     fontWeight: "800",
@@ -244,31 +207,18 @@ const styles = StyleSheet.create({
     borderColor: C.border,
     gap: 12,
   },
-  perkRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
+  perkRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   perkIcon: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     borderRadius: 10,
     backgroundColor: C.chip,
     justifyContent: "center",
     alignItems: "center",
   },
-  perkText: {
-    fontSize: 14,
-    color: C.text,
-    flex: 1,
-    fontWeight: "500",
-  },
-  plansLabel: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: C.text,
-    marginBottom: 12,
-  },
+  perkEmoji: { fontSize: 18 },
+  perkText: { fontSize: 14, color: C.text, flex: 1, fontWeight: "500" },
+  plansLabel: { fontSize: 16, fontWeight: "700", color: C.text, marginBottom: 12 },
   planCard: {
     backgroundColor: C.surface,
     borderRadius: 16,
@@ -279,37 +229,13 @@ const styles = StyleSheet.create({
     position: "relative",
     overflow: "hidden",
   },
-  planCardSelected: {
-    borderColor: C.primary,
-    backgroundColor: "#EAF0FB",
-  },
-  planHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  planName: {
-    fontSize: 17,
-    fontWeight: "800",
-    color: C.text,
-    marginBottom: 4,
-  },
-  planDesc: {
-    fontSize: 12,
-    color: C.textSecondary,
-  },
-  planPriceBox: {
-    alignItems: "flex-end",
-  },
-  planPrice: {
-    fontSize: 28,
-    fontWeight: "900",
-    color: C.primary,
-  },
-  planPricePer: {
-    fontSize: 12,
-    color: C.textSecondary,
-  },
+  planCardSelected: { borderColor: C.primary, backgroundColor: "#EAF0FB" },
+  planHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  planName: { fontSize: 17, fontWeight: "800", color: C.text, marginBottom: 4 },
+  planDesc: { fontSize: 12, color: C.textSecondary },
+  planPriceBox: { alignItems: "flex-end" },
+  planPrice: { fontSize: 28, fontWeight: "900", color: C.primary },
+  planPricePer: { fontSize: 12, color: C.textSecondary },
   bestValueBadge: {
     position: "absolute",
     top: 0,
@@ -319,12 +245,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderBottomLeftRadius: 10,
   },
-  bestValueText: {
-    color: "#fff",
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-  },
+  bestValueText: { color: "#fff", fontSize: 9, fontWeight: "800", letterSpacing: 0.5 },
   subscribeButton: {
     backgroundColor: C.primary,
     borderRadius: 16,
@@ -337,28 +258,9 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 6,
   },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  subscribeText: {
-    fontSize: 17,
-    fontWeight: "800",
-    color: "#fff",
-  },
-  skipButton: {
-    alignItems: "center",
-    paddingVertical: 12,
-    marginBottom: 16,
-  },
-  skipText: {
-    fontSize: 14,
-    color: C.textSecondary,
-    fontWeight: "600",
-  },
-  disclaimer: {
-    fontSize: 11,
-    color: C.textMuted,
-    textAlign: "center",
-    lineHeight: 16,
-  },
+  buttonDisabled: { opacity: 0.6 },
+  subscribeText: { fontSize: 17, fontWeight: "800", color: "#fff" },
+  skipButton: { alignItems: "center", paddingVertical: 12, marginBottom: 16 },
+  skipText: { fontSize: 14, color: C.textSecondary, fontWeight: "600" },
+  disclaimer: { fontSize: 11, color: C.textMuted, textAlign: "center", lineHeight: 16 },
 });

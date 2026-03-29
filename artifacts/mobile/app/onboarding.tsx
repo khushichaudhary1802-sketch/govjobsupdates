@@ -1,4 +1,3 @@
-import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useState } from "react";
@@ -13,6 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import Icon from "@/components/Icon";
 import Colors from "@/constants/colors";
 import { JobType, useApp } from "@/context/AppContext";
 import { DISTRICTS_BY_STATE, INDIAN_STATES, JOB_TYPES } from "@/data/jobs";
@@ -59,19 +59,13 @@ export default function OnboardingScreen() {
       setStep(2);
     } else if (step === 2) {
       if (!selectedDistrict) {
-        Alert.alert(
-          "Select District",
-          "Please select your district to continue."
-        );
+        Alert.alert("Select District", "Please select your district to continue.");
         return;
       }
       setStep(3);
     } else {
       if (selectedJobTypes.length === 0) {
-        Alert.alert(
-          "Select Job Types",
-          "Please select at least one job type."
-        );
+        Alert.alert("Select Job Types", "Please select at least one job type.");
         return;
       }
       await setPreferences({
@@ -83,8 +77,7 @@ export default function OnboardingScreen() {
     }
   };
 
-  const topPadding =
-    Platform.OS === "web" ? 67 : insets.top;
+  const topPadding = Platform.OS === "web" ? 67 : insets.top;
 
   return (
     <View style={[styles.container, { paddingTop: topPadding }]}>
@@ -92,17 +85,14 @@ export default function OnboardingScreen() {
         {[1, 2, 3].map((s) => (
           <View
             key={s}
-            style={[
-              styles.progressSegment,
-              step >= s && styles.progressActive,
-            ]}
+            style={[styles.progressSegment, step >= s && styles.progressActive]}
           />
         ))}
       </View>
 
       <View style={styles.headerSection}>
         <View style={styles.logoContainer}>
-          <Feather name="flag" size={28} color="#fff" />
+          <Text style={styles.logoEmoji}>🏛️</Text>
         </View>
         <Text style={styles.appName}>SarkariNaukri</Text>
         <Text style={styles.stepTitle}>
@@ -135,9 +125,9 @@ export default function OnboardingScreen() {
             >
               {selectedState || "Select State"}
             </Text>
-            <Feather
+            <Icon
               name={showStateList ? "chevron-up" : "chevron-down"}
-              size={20}
+              size={18}
               color={C.textSecondary}
             />
           </TouchableOpacity>
@@ -164,14 +154,13 @@ export default function OnboardingScreen() {
                   <Text
                     style={[
                       styles.dropdownItemText,
-                      selectedState === state &&
-                        styles.dropdownItemTextSelected,
+                      selectedState === state && styles.dropdownItemTextSelected,
                     ]}
                   >
                     {state}
                   </Text>
                   {selectedState === state && (
-                    <Feather name="check" size={16} color={C.primary} />
+                    <Icon name="check" size={14} color={C.primary} />
                   )}
                 </TouchableOpacity>
               ))}
@@ -183,7 +172,8 @@ export default function OnboardingScreen() {
       {step === 2 && (
         <View style={styles.pickerSection}>
           <Text style={styles.selectedStateLabel}>
-            State: <Text style={styles.selectedStateName}>{selectedState}</Text>
+            State:{" "}
+            <Text style={styles.selectedStateName}>{selectedState}</Text>
           </Text>
           <TouchableOpacity
             style={styles.pickerButton}
@@ -197,9 +187,9 @@ export default function OnboardingScreen() {
             >
               {selectedDistrict || "Select District"}
             </Text>
-            <Feather
+            <Icon
               name={showDistrictList ? "chevron-up" : "chevron-down"}
-              size={20}
+              size={18}
               color={C.textSecondary}
             />
           </TouchableOpacity>
@@ -232,7 +222,7 @@ export default function OnboardingScreen() {
                     {district}
                   </Text>
                   {selectedDistrict === district && (
-                    <Feather name="check" size={16} color={C.primary} />
+                    <Icon name="check" size={14} color={C.primary} />
                   )}
                 </TouchableOpacity>
               ))}
@@ -271,7 +261,10 @@ export default function OnboardingScreen() {
               return (
                 <TouchableOpacity
                   key={type}
-                  style={[styles.jobTypeCard, selected && styles.jobTypeCardSelected]}
+                  style={[
+                    styles.jobTypeCard,
+                    selected && styles.jobTypeCardSelected,
+                  ]}
                   onPress={() => toggleJobType(type)}
                   activeOpacity={0.8}
                 >
@@ -281,9 +274,9 @@ export default function OnboardingScreen() {
                       selected && styles.jobTypeIconSelected,
                     ]}
                   >
-                    <Feather
-                      name={JOB_TYPE_ICONS[type] as any}
-                      size={22}
+                    <Icon
+                      name={JOB_TYPE_ICONS[type]}
+                      size={24}
                       color={selected ? "#fff" : C.primary}
                     />
                   </View>
@@ -297,7 +290,7 @@ export default function OnboardingScreen() {
                   </Text>
                   {selected && (
                     <View style={styles.checkMark}>
-                      <Feather name="check" size={12} color="#fff" />
+                      <Icon name="check" size={10} color="#fff" />
                     </View>
                   )}
                 </TouchableOpacity>
@@ -306,8 +299,8 @@ export default function OnboardingScreen() {
           </View>
           {selectedJobTypes.length > 0 && (
             <Text style={styles.selectedCount}>
-              {selectedJobTypes.length} category
-              {selectedJobTypes.length > 1 ? "s" : ""} selected
+              {selectedJobTypes.length} categor
+              {selectedJobTypes.length > 1 ? "ies" : "y"} selected
             </Text>
           )}
         </View>
@@ -317,8 +310,7 @@ export default function OnboardingScreen() {
         style={[
           styles.footer,
           {
-            paddingBottom:
-              Platform.OS === "web" ? 34 : insets.bottom + 16,
+            paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 16,
           },
         ]}
       >
@@ -327,7 +319,7 @@ export default function OnboardingScreen() {
             style={styles.backButton}
             onPress={() => setStep((s) => (s === 3 ? 2 : 1) as 1 | 2 | 3)}
           >
-            <Feather name="arrow-left" size={20} color={C.primary} />
+            <Icon name="arrow-left" size={20} color={C.primary} />
           </TouchableOpacity>
         )}
         <TouchableOpacity
@@ -338,7 +330,7 @@ export default function OnboardingScreen() {
           <Text style={styles.continueButtonText}>
             {step === 3 ? "Get Started" : "Continue"}
           </Text>
-          <Feather name="arrow-right" size={18} color="#fff" />
+          <Icon name="arrow-right" size={18} color="#fff" />
         </TouchableOpacity>
       </View>
     </View>
@@ -346,10 +338,7 @@ export default function OnboardingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: C.background,
-  },
+  container: { flex: 1, backgroundColor: C.background },
   progressBar: {
     flexDirection: "row",
     paddingHorizontal: 24,
@@ -362,9 +351,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: C.border,
   },
-  progressActive: {
-    backgroundColor: C.primary,
-  },
+  progressActive: { backgroundColor: C.primary },
   headerSection: {
     paddingHorizontal: 24,
     marginBottom: 28,
@@ -384,6 +371,7 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 8,
   },
+  logoEmoji: { fontSize: 28 },
   appName: {
     fontSize: 15,
     fontWeight: "700",
@@ -404,19 +392,9 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 20,
   },
-  pickerSection: {
-    flex: 1,
-    paddingHorizontal: 24,
-  },
-  selectedStateLabel: {
-    fontSize: 13,
-    color: C.textSecondary,
-    marginBottom: 12,
-  },
-  selectedStateName: {
-    color: C.primary,
-    fontWeight: "700",
-  },
+  pickerSection: { flex: 1, paddingHorizontal: 24 },
+  selectedStateLabel: { fontSize: 13, color: C.textSecondary, marginBottom: 12 },
+  selectedStateName: { color: C.primary, fontWeight: "700" },
   pickerButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -429,14 +407,8 @@ const styles = StyleSheet.create({
     borderColor: C.border,
     marginBottom: 8,
   },
-  pickerButtonText: {
-    fontSize: 15,
-    color: C.textMuted,
-    fontWeight: "500",
-  },
-  pickerSelected: {
-    color: C.text,
-  },
+  pickerButtonText: { fontSize: 15, color: C.textMuted, fontWeight: "500" },
+  pickerSelected: { color: C.text },
   dropdownList: {
     backgroundColor: C.surface,
     borderRadius: 14,
@@ -458,26 +430,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: C.border,
   },
-  dropdownItemSelected: {
-    backgroundColor: C.chip,
-  },
-  dropdownItemText: {
-    fontSize: 14,
-    color: C.text,
-  },
-  dropdownItemTextSelected: {
-    color: C.primary,
-    fontWeight: "700",
-  },
-  jobTypesSection: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  jobTypesGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-  },
+  dropdownItemSelected: { backgroundColor: C.chip },
+  dropdownItemText: { fontSize: 14, color: C.text },
+  dropdownItemTextSelected: { color: C.primary, fontWeight: "700" },
+  jobTypesSection: { flex: 1, paddingHorizontal: 16 },
+  jobTypesGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   jobTypeCard: {
     width: "30%",
     aspectRatio: 1,
@@ -507,18 +464,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
-  jobTypeIconSelected: {
-    backgroundColor: C.primary,
-  },
+  jobTypeIconSelected: { backgroundColor: C.primary },
   jobTypeLabel: {
     fontSize: 11,
     fontWeight: "700",
     color: C.textSecondary,
     textAlign: "center",
+    paddingHorizontal: 4,
   },
-  jobTypeLabelSelected: {
-    color: C.primary,
-  },
+  jobTypeLabelSelected: { color: C.primary },
   checkMark: {
     position: "absolute",
     top: 8,
