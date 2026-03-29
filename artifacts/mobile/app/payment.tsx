@@ -94,6 +94,7 @@ export default function PaymentScreen() {
       await trackBuyPremiumSuccess({
         plan: selectedPlan,
         paymentId: paymentResult.razorpay_payment_id,
+        orderId: paymentResult.razorpay_order_id ?? order?.orderId ?? "",
         amount,
       });
 
