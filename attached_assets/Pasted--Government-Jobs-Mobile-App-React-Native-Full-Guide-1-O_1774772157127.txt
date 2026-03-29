@@ -1,0 +1,325 @@
+# Government Jobs Mobile App (React Native) – Full Guide
+
+## 1. Overview
+
+This app helps users find government jobs based on:
+
+* State
+* District
+* Job Type (multiple selections)
+
+Core features:
+
+* Personalized job feed
+* Bookmark jobs
+* Apply via official website (opens inside app)
+* ₹1 trial (1 day)
+* ₹249/month recurring subscription
+
+Built using:
+
+* React Native (Expo recommended for Replit)
+* Firebase (Auth + Firestore)
+* Web scraping/API for job data
+* Razorpay / Stripe for payments
+
+---
+
+## 2. User Flow
+
+### Step 1: App Open
+
+* Splash screen
+* Check login status
+
+### Step 2: Onboarding
+
+Ask user:
+
+* Select State (Dropdown)
+* Select District (Dropdown)
+* Select Job Types (Multi-select):
+
+  * SSC
+  * Banking
+  * Railway
+  * Defence
+  * Teaching
+  * State Govt
+  * PSU
+
+### Step 3: Payment Gate
+
+* Show ₹1 trial for 1 day
+* After trial → ₹249/month auto-renew
+
+### Step 4: Home Screen
+
+* Job listings based on preferences
+* Filters available
+* Bookmark button
+
+### Step 5: Job Details
+
+* Full description
+* Eligibility
+* Last date
+* Apply button
+
+### Step 6: Apply
+
+* Opens official website inside app (WebView)
+
+---
+
+## 3. Project Setup (Replit Friendly)
+
+### Install Expo App
+
+```
+npx create-expo-app govt-jobs-app
+cd govt-jobs-app
+npm install
+npm start
+```
+
+### Install Required Libraries
+
+```
+npm install @react-navigation/native
+npm install react-native-screens react-native-safe-area-context
+npm install @react-navigation/native-stack
+npm install firebase
+npm install react-native-webview
+npm install axios
+npm install react-native-paper
+```
+
+---
+
+## 4. Folder Structure
+
+```
+/src
+  /screens
+    SplashScreen.js
+    OnboardingScreen.js
+    PaymentScreen.js
+    HomeScreen.js
+    JobDetailsScreen.js
+    BookmarkScreen.js
+
+  /components
+    JobCard.js
+    FilterBar.js
+
+  /services
+    api.js
+    firebase.js
+
+  /utils
+    constants.js
+```
+
+---
+
+## 5. Firebase Setup
+
+### Features Used:
+
+* Authentication (Email/Phone)
+* Firestore (jobs + bookmarks + user data)
+
+### Example Config
+
+```js
+import { initializeApp } from 'firebase/app';
+
+const firebaseConfig = {
+  apiKey: "YOUR_KEY",
+  authDomain: "YOUR_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+};
+
+export const app = initializeApp(firebaseConfig);
+```
+
+---
+
+## 6. Job Data Source (Scraping/API)
+
+You can collect job data from:
+
+* Government job portals
+* RSS feeds
+* APIs (if available)
+
+### Example API Fetch
+
+```js
+import axios from 'axios';
+
+export const fetchJobs = async () => {
+  const res = await axios.get('https://your-api.com/jobs');
+  return res.data;
+};
+```
+
+---
+
+## 7. Home Screen Example
+
+```js
+import React, { useEffect, useState } from 'react';
+import { View, Text, FlatList } from 'react-native';
+import { fetchJobs } from '../services/api';
+
+export default function HomeScreen() {
+  const [jobs, setJobs] = useState([]);
+
+  useEffect(() => {
+    fetchJobs().then(setJobs);
+  }, []);
+
+  return (
+    <View>
+      <FlatList
+        data={jobs}
+        renderItem={({ item }) => (
+          <Text>{item.title}</Text>
+        )}
+      />
+    </View>
+  );
+}
+```
+
+---
+
+## 8. WebView (Apply Feature)
+
+```js
+import { WebView } from 'react-native-webview';
+
+export default function ApplyScreen({ route }) {
+  return <WebView source={{ uri: route.params.url }} />;
+}
+```
+
+---
+
+## 9. Bookmark Feature
+
+Store bookmarks in Firebase:
+
+```js
+import { getFirestore, collection, addDoc } from 'firebase/firestore';
+
+const db = getFirestore();
+
+export const saveBookmark = async (job) => {
+  await addDoc(collection(db, 'bookmarks'), job);
+};
+```
+
+---
+
+## 10. Payment Integration
+
+### Plan:
+
+* ₹1 Trial (1 day)
+* ₹249/month subscription
+
+### Razorpay (Recommended in India)
+
+Install:
+
+```
+npm install react-native-razorpay
+```
+
+### Example
+
+```js
+var options = {
+  description: 'Subscription',
+  currency: 'INR',
+  key: 'YOUR_KEY',
+  amount: '100', // ₹1
+  name: 'Gov Jobs App',
+};
+```
+
+⚠️ Note:
+
+* For subscriptions, use Razorpay Subscriptions API
+* Track user subscription status in Firebase
+
+---
+
+## 11. Trial Logic
+
+Store in DB:
+
+```
+user: {
+  trialStart: date,
+  isSubscribed: boolean
+}
+```
+
+Check:
+
+* If trial expired → force payment screen
+
+---
+
+## 12. Play Store Requirements
+
+* Privacy Policy (mandatory)
+* Subscription disclosure
+* Refund policy
+* Secure payments
+
+---
+
+## 13. UI Suggestions
+
+* Clean cards for jobs
+* Filters at top
+* Bookmark icon ❤️
+* Sticky Apply button
+
+---
+
+## 14. Future Improvements
+
+* Push notifications
+* AI job recommendations
+* Resume builder
+* Telegram alerts
+
+---
+
+## 15. Important Notes
+
+* Avoid illegal scraping (use APIs or permission)
+* Always open official site for apply
+* Keep data updated daily
+
+---
+
+## 16. Deployment
+
+```
+npx expo build:android
+```
+
+Upload to Google Play Console.
+
+---
+
+## DONE ✅
+
+You now have a complete blueprint to build your Government Jobs App in React Native using Replit.
