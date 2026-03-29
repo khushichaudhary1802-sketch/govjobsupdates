@@ -91,6 +91,17 @@ Generated Zod schemas from the OpenAPI spec (e.g. `HealthCheckResponse`). Used b
 
 Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHealthCheck`, `healthCheck`).
 
+### `artifacts/mobile` (`@workspace/mobile`)
+
+SarkariNaukri — Expo React Native government jobs app.
+
+- **Data**: `data/jobs.ts` — 736 real government jobs scraped from freejobalert.com (March 2026); includes title, organization, vacancies, qualification, salary range, last date, apply URL, category, and state.
+- **Context**: `context/AppContext.tsx` — manages user preferences (state/district/job types), bookmarks (AsyncStorage), and subscription status.
+- **Icons**: `components/Icon.tsx` — emoji/Unicode icon component; zero font dependency. All `@expo/vector-icons` usage removed.
+- **Categories** (7): All India Govt Jobs, State Govt Jobs, Bank Jobs, Teaching Jobs, Engineering Jobs, Railway Jobs, Police/Defence Jobs.
+- **Screens**: Onboarding (3-step), Payment/Paywall (₹1 trial → ₹249/month), Jobs feed (search + filter), Job detail (in-app browser), Bookmarks, Profile.
+- **Backend**: API server at `artifacts/api-server` scrapes jobkaka.com RSS for live data (30-min cache); mobile can be wired to it via `/api/jobs`.
+
 ### `scripts` (`@workspace/scripts`)
 
 Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.
