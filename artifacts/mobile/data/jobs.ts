@@ -14075,3 +14075,40 @@ export const SAMPLE_JOBS: Job[] = [
     category: "All India Govt Jobs",
   },
 ];
+
+export function getFilteredJobs(
+  jobs: Job[],
+  state: string,
+  jobTypes: JobType[],
+  searchQuery: string = "",
+  selectedFilter: JobType | null = null
+): Job[] {
+  let result = jobs;
+
+  if (selectedFilter) {
+    result = result.filter((j) => j.jobType === selectedFilter);
+  }
+
+  if (jobTypes.length > 0 && !selectedFilter) {
+    result = result.filter(
+      (j) =>
+        jobTypes.includes(j.jobType) ||
+        j.state === "All India" ||
+        j.state === state
+    );
+  }
+
+  if (searchQuery.trim()) {
+    const q = searchQuery.trim().toLowerCase();
+    result = result.filter(
+      (j) =>
+        j.title.toLowerCase().includes(q) ||
+        j.organization.toLowerCase().includes(q) ||
+        j.jobType.toLowerCase().includes(q) ||
+        j.qualification.toLowerCase().includes(q) ||
+        j.state.toLowerCase().includes(q)
+    );
+  }
+
+  return result;
+}
