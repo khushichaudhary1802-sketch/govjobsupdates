@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "120897220362",
+    "project_id": "flutter-ai-playground-61d57",
+    "storage_bucket": "flutter-ai-playground-61d57.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:120897220362:android:7b1906117e26c051e2d4f3",
+        "android_client_info": {
+          "package_name": "enhancore.fix.ai.skin.enhancer.photo.editor"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAzOW87uc2VIa-2kdJBnEF-BwHOD5H3lzY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
