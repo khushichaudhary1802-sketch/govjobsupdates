@@ -28,5 +28,5 @@ timeoutMs = 20000
 [userenv]
 
 [userenv.shared]
-EXPO_PUBLIC_META_PIXEL_ID = "lE7BvxoVYvl34abyOrfGwUdG"
 EXPO_PUBLIC_RAZORPAY_KEY_ID = "rzp_live_SRZNTC0rtN0x0g"
+EXPO_PUBLIC_META_PIXEL_ID = "933843292870431"
