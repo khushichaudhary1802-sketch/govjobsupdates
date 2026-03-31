@@ -231,40 +231,46 @@ async function openNativeCheckout(params: {
 }): Promise<RazorpayPaymentResult> {
   const apiBase = getApiBase();
   const sessionId = generateSessionId();
-  // recordUrl must be publicly accessible from the user's browser
-  const recordUrl = `${apiBase}/api/payments/record-payment`;
 
-  const qs = new URLSearchParams({
-    amount: String(params.amount),
-    description: params.description,
-    sessionId,
-    userId: params.userId ?? "",
-    recordUrl,
+  // Callback URL — Razorpay redirects here after payment (on rzp.io domain, no domain restriction)
+  const callbackUrl = `${apiBase}/api/payments/payment-link-callback`;
+
+  // Step 1: Create a Razorpay Payment Link (hosted on rzp.io)
+  const linkResp = await fetch(`${apiBase}/api/payments/create-payment-link`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      amount: params.amount,
+      description: params.description,
+      sessionId,
+      callbackUrl,
+    }),
   });
-  const checkoutUrl = `${apiBase}/api/payments/checkout-page?${qs.toString()}`;
 
-  // Track whether polling found a result
-  let paymentResult: { paymentId: string; orderId?: string; signature?: string } | null = null;
+  if (!linkResp.ok) {
+    const err = await linkResp.json().catch(() => ({ error: "Unknown error" }));
+    throw new Error((err as any).error ?? "Failed to create payment link");
+  }
 
-  // Open browser — this awaits until the user closes the browser
-  const browserPromise = WebBrowser.openBrowserAsync(checkoutUrl, {
+  const { shortUrl } = (await linkResp.json()) as { shortUrl: string; linkId: string };
+
+  // Step 2: Open rzp.io payment page (no domain restriction — hosted by Razorpay)
+  const browserPromise = WebBrowser.openBrowserAsync(shortUrl, {
     toolbarColor: "#1A3A6B",
     controlsColor: "#D4A017",
     showTitle: true,
   });
 
-  // Poll concurrently while the browser is open (max 10 min)
+  // Step 3: Poll for payment result concurrently
+  let paymentResult: { paymentId: string; orderId?: string; signature?: string } | null = null;
   const pollPromise = pollForPayment(sessionId, apiBase, 10 * 60 * 1000);
 
-  // Race: either the browser closes or we get a payment result
   await Promise.race([
     browserPromise,
-    pollPromise.then((r) => {
-      paymentResult = r;
-    }),
+    pollPromise.then((r) => { paymentResult = r; }),
   ]);
 
-  // If browser closed first without a result, wait a few more seconds for record-payment POST
+  // Browser closed — give a few seconds for the callback to be processed
   if (!paymentResult) {
     await new Promise<void>((r) => setTimeout(r, 4000));
     try {
@@ -276,9 +282,7 @@ async function openNativeCheckout(params: {
           paymentResult = { paymentId: data.paymentId, orderId: data.orderId, signature: data.signature };
         }
       }
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
   }
 
   if (paymentResult) {

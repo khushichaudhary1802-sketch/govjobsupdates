@@ -58,6 +58,107 @@ function cleanExpiredSessions() {
 }
 
 // ---------------------------------------------------------------------------
+// POST /create-payment-link
+// Creates a Razorpay Payment Link (hosted on rzp.io — no domain restriction).
+// ---------------------------------------------------------------------------
+router.post("/create-payment-link", async (req, res) => {
+  try {
+    const { amount, description, sessionId, callbackUrl } = req.body as {
+      amount: number;
+      description?: string;
+      sessionId: string;
+      callbackUrl: string;
+    };
+
+    if (!amount || !sessionId || !callbackUrl) {
+      res.status(400).json({ error: "Missing required fields" });
+      return;
+    }
+
+    cleanExpiredSessions();
+    sessions.set(sessionId, { status: "pending", createdAt: Date.now() });
+
+    const razorpay = getRazorpay();
+    const link = await (razorpay as any).paymentLink.create({
+      amount: Math.round(amount),
+      currency: "INR",
+      description: description ?? "SarkariNaukri Premium",
+      callback_url: callbackUrl,
+      callback_method: "get",
+      reference_id: sessionId,
+      notes: { sessionId },
+    });
+
+    console.log(`[Payments] Payment link created: ${link.id} session=${sessionId}`);
+    res.json({ shortUrl: link.short_url, linkId: link.id });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to create payment link";
+    console.error("[Payments] create-payment-link error:", msg);
+    res.status(500).json({ error: msg });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /payment-link-callback
+// Razorpay redirects here after payment link is paid.
+// Records the session and shows a success page.
+// ---------------------------------------------------------------------------
+router.get("/payment-link-callback", (req, res) => {
+  const {
+    razorpay_payment_id,
+    razorpay_payment_link_id,
+    razorpay_payment_link_reference_id,
+    razorpay_payment_link_status,
+    razorpay_signature,
+  } = req.query as Record<string, string>;
+
+  const sessionId = razorpay_payment_link_reference_id;
+  const paid = razorpay_payment_link_status === "paid";
+
+  if (sessionId && razorpay_payment_id && paid) {
+    sessions.set(sessionId, {
+      status: "completed",
+      paymentId: razorpay_payment_id,
+      orderId: razorpay_payment_link_id,
+      signature: razorpay_signature,
+      createdAt: Date.now(),
+    });
+    console.log(`[Payments] Payment link callback: session=${sessionId} payment=${razorpay_payment_id}`);
+  }
+
+  const successHtml = `<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Payment Successful</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F4F6FA;display:flex;align-items:center;justify-content:center;min-height:100vh}
+    .card{background:#fff;border-radius:20px;padding:48px 28px;text-align:center;max-width:360px;width:100%;box-shadow:0 8px 32px rgba(26,58,107,.12)}
+    .icon{font-size:64px;margin-bottom:16px}
+    h1{color:#166534;font-size:22px;font-weight:700;margin-bottom:10px}
+    p{color:#555;font-size:15px;margin-bottom:28px;line-height:1.5}
+    .btn{display:block;background:#1A3A6B;color:#fff;border:none;padding:15px 24px;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;text-decoration:none;width:100%}
+    .note{color:#999;font-size:12px;margin-top:20px}
+  </style>
+</head><body>
+<div class="card">
+  <div class="icon">${paid ? "✅" : "❌"}</div>
+  <h1>${paid ? "Payment Successful!" : "Payment Not Completed"}</h1>
+  <p>${paid
+    ? "Your SarkariNaukri Premium access is being activated. Please return to the app."
+    : "The payment was not completed. Please return to the app and try again."
+  }</p>
+  <a class="btn" href="javascript:window.close()">Return to App</a>
+  <p class="note">You can also close this window manually.</p>
+</div>
+</body></html>`;
+
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.send(successHtml);
+});
+
+// ---------------------------------------------------------------------------
 // GET /checkout-page  — hosted Razorpay checkout page for native devices
 // Query params: amount (paise), description, sessionId, userId
 // ---------------------------------------------------------------------------
