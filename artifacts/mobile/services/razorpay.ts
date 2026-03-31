@@ -322,3 +322,95 @@ export async function openRazorpayCheckout(params: {
     description: params.description,
   });
 }
+
+// ---------------------------------------------------------------------------
+// SubscriptionResult — returned by openSubscriptionCheckout
+// ---------------------------------------------------------------------------
+export interface SubscriptionResult {
+  subscriptionId: string;
+  planId: string;
+  startAt: number;
+  status: string;
+  paymentId?: string;
+}
+
+// ---------------------------------------------------------------------------
+// openSubscriptionCheckout
+// Creates a Razorpay Subscription (with ₹1 addon + ₹249/month plan) and
+// opens the Razorpay-hosted subscription page on rzp.io. The page clearly
+// shows both the ₹1 trial fee AND the ₹249/month recurring mandate.
+// Polls until the subscription is authenticated/active.
+// ---------------------------------------------------------------------------
+export async function openSubscriptionCheckout(params: {
+  userId: string;
+}): Promise<SubscriptionResult> {
+  const apiBase = getApiBase();
+  const sessionId = generateSessionId();
+
+  // Step 1: Create subscription with ₹1 addon on backend
+  const resp = await fetch(`${apiBase}/api/payments/create-subscription-link`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId: params.userId, sessionId }),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({ error: "Unknown error" }));
+    throw new Error((err as any).error ?? "Failed to create subscription");
+  }
+
+  const { subscriptionId, shortUrl, planId, startAt } = (await resp.json()) as {
+    subscriptionId: string;
+    shortUrl: string;
+    planId: string;
+    startAt: number;
+  };
+
+  // Step 2: Open the Razorpay subscription page (hosted on rzp.io)
+  // Shows ₹1 trial fee + ₹249/month mandate in one screen
+  if (Platform.OS === "web") {
+    window.open(shortUrl, "_blank", "noopener,noreferrer");
+  } else {
+    WebBrowser.openBrowserAsync(shortUrl, {
+      toolbarColor: "#1A3A6B",
+      controlsColor: "#D4A017",
+      showTitle: true,
+    });
+  }
+
+  // Step 3: Poll Razorpay API until subscription is authenticated/active
+  const deadline = Date.now() + 10 * 60 * 1000; // 10 min timeout
+  let result: SubscriptionResult | null = null;
+
+  while (Date.now() < deadline) {
+    await new Promise<void>((r) => setTimeout(r, 3000));
+    try {
+      const checkResp = await fetch(
+        `${apiBase}/api/payments/check-subscription?subscriptionId=${encodeURIComponent(subscriptionId)}`
+      );
+      if (checkResp.ok) {
+        const data = (await checkResp.json()) as {
+          activated: boolean;
+          status: string;
+          subscriptionId: string;
+          planId: string;
+          startAt: number;
+          paymentId?: string;
+        };
+        if (data.activated) {
+          result = {
+            subscriptionId: data.subscriptionId,
+            planId: data.planId,
+            startAt: data.startAt,
+            status: data.status,
+            paymentId: data.paymentId,
+          };
+          break;
+        }
+      }
+    } catch { /* network hiccup — keep polling */ }
+  }
+
+  if (result) return result;
+  throw new Error("Subscription not activated");
+}

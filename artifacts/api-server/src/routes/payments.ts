@@ -443,7 +443,108 @@ router.post("/verify-payment", (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// POST /create-subscription
+// POST /create-subscription-link
+// Creates a Razorpay Subscription with ₹1 addon on rzp.io — shows both
+// the trial fee AND the ₹249/month recurring mandate in one screen.
+// ---------------------------------------------------------------------------
+router.post("/create-subscription-link", async (req, res) => {
+  try {
+    const { userId, sessionId } = req.body as { userId?: string; sessionId: string };
+
+    if (!sessionId) {
+      res.status(400).json({ error: "Missing sessionId" });
+      return;
+    }
+
+    cleanExpiredSessions();
+    sessions.set(sessionId, { status: "pending", createdAt: Date.now() });
+
+    const razorpay = getRazorpay();
+    const planId = await getOrCreatePlan(razorpay);
+    // First ₹249 charge happens 3 days after trial
+    const startAt = Math.floor(Date.now() / 1000) + 3 * 24 * 60 * 60;
+
+    const subscription = await (razorpay.subscriptions as any).create({
+      plan_id: planId,
+      total_count: 12,
+      quantity: 1,
+      start_at: startAt,
+      customer_notify: 1,
+      addons: [
+        {
+          item: {
+            amount: 100, // ₹1 trial fee in paise
+            currency: "INR",
+            name: "3-Day Trial",
+          },
+        },
+      ],
+      notes: { userId: userId ?? "", sessionId },
+    });
+
+    console.log(
+      `[Payments] Subscription link created: ${subscription.id} session=${sessionId} url=${subscription.short_url}`
+    );
+
+    res.json({
+      subscriptionId: subscription.id,
+      shortUrl: subscription.short_url,
+      planId,
+      startAt,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to create subscription link";
+    console.error("[Payments] create-subscription-link error:", msg);
+    res.status(500).json({ error: msg });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /check-subscription?subscriptionId=xxx
+// Polls Razorpay for subscription status. "authenticated" or "active" = done.
+// ---------------------------------------------------------------------------
+router.get("/check-subscription", async (req, res) => {
+  try {
+    const { subscriptionId } = req.query as Record<string, string>;
+    if (!subscriptionId) {
+      res.status(400).json({ error: "Missing subscriptionId" });
+      return;
+    }
+
+    const razorpay = getRazorpay();
+    const sub = await razorpay.subscriptions.fetch(subscriptionId);
+
+    const status = sub.status as string;
+    const activated = status === "authenticated" || status === "active";
+
+    // Try to get payment ID from subscription payments
+    let paymentId: string | undefined;
+    if (activated) {
+      try {
+        const payments = await (razorpay.subscriptions as any).fetchAllPayments(subscriptionId, {});
+        const items = payments?.items ?? [];
+        if (items.length > 0) {
+          paymentId = items[0].id;
+        }
+      } catch { /* non-fatal */ }
+    }
+
+    res.json({
+      status,
+      activated,
+      subscriptionId: sub.id,
+      planId: sub.plan_id,
+      startAt: sub.start_at,
+      paymentId,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to check subscription";
+    res.status(500).json({ error: msg });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /create-subscription  (kept for backward compatibility)
 // ---------------------------------------------------------------------------
 router.post("/create-subscription", async (req, res) => {
   try {
@@ -454,7 +555,6 @@ router.post("/create-subscription", async (req, res) => {
 
     const razorpay = getRazorpay();
     const planId = await getOrCreatePlan(razorpay);
-    // Trial period: 3 days before first ₹249 charge
     const startAt = Math.floor(Date.now() / 1000) + 3 * 24 * 60 * 60;
 
     const subscription = await razorpay.subscriptions.create({

@@ -19,11 +19,7 @@ import {
   trackBuyPremiumSuccess,
   trackPaymentFailed,
 } from "@/services/analytics";
-import {
-  createSubscription,
-  verifyPayment,
-  openRazorpayCheckout,
-} from "@/services/razorpay";
+import { openSubscriptionCheckout } from "@/services/razorpay";
 
 const C = Colors.light;
 
@@ -50,56 +46,46 @@ export default function PaymentScreen() {
     setIsProcessing(true);
 
     try {
-      // ₹1 trial payment via Razorpay Payment Link (no domain restriction)
-      const paymentResult = await openRazorpayCheckout({
-        amount: 100, // ₹1 in paise
-        currency: "INR",
-        name: "SarkariNaukri Premium",
-        description: "3-Day Free Trial – ₹249/month after",
-        prefill: {},
-      });
-
-      await verifyPayment(paymentResult);
+      // Opens Razorpay-hosted subscription page on rzp.io:
+      // - Shows ₹1 trial fee charged today
+      // - Shows ₹249/month recurring mandate starting after 3 days
+      // - User approves both in one screen (UPI AutoPay / card mandate)
+      const subscription = await openSubscriptionCheckout({ userId });
 
       const paymentInfo: PaymentInfo = {
-        paymentId: paymentResult.razorpay_payment_id,
-        orderId: paymentResult.razorpay_order_id ?? "",
+        paymentId: subscription.paymentId ?? subscription.subscriptionId,
+        orderId: subscription.subscriptionId,
         plan: "trial",
         amount: 1,
       };
-
-      // Create ₹249/month subscription — starts 3 days from now, auto-renews monthly
-      const subscription = await createSubscription({
-        userId,
-        paymentId: paymentResult.razorpay_payment_id,
-      });
 
       await activateTrialSubscription(paymentInfo);
 
       await trackBuyPremiumSuccess({
         plan: "trial",
-        paymentId: paymentResult.razorpay_payment_id,
-        orderId: paymentResult.razorpay_order_id ?? "",
+        paymentId: subscription.paymentId ?? subscription.subscriptionId,
+        orderId: subscription.subscriptionId,
         amount: 1,
       });
 
-      const nextChargeDate = subscription
-        ? new Date(subscription.startAt * 1000).toLocaleDateString("en-IN", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          })
-        : "3 days from now";
+      const nextChargeDate = new Date(subscription.startAt * 1000).toLocaleDateString(
+        "en-IN",
+        { day: "numeric", month: "long", year: "numeric" }
+      );
 
       Alert.alert(
         "Trial Activated! 🎉",
-        `Your 3-day free trial has started.\n\n₹249/month subscription begins on ${nextChargeDate} and renews automatically every month. Cancel anytime via Razorpay.`,
+        `Your 3-day free trial has started.\n\n₹249 will be auto-debited on ${nextChargeDate} and every month after. Cancel anytime via Razorpay.`,
         [{ text: "Explore Jobs", onPress: () => router.replace("/(tabs)/") }]
       );
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Payment failed";
 
-      if (msg === "Payment cancelled" || msg === "Payment not completed") {
+      if (
+        msg === "Payment cancelled" ||
+        msg === "Payment not completed" ||
+        msg === "Subscription not activated"
+      ) {
         setIsProcessing(false);
         return;
       }
