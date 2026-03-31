@@ -454,7 +454,8 @@ router.post("/create-subscription", async (req, res) => {
 
     const razorpay = getRazorpay();
     const planId = await getOrCreatePlan(razorpay);
-    const startAt = Math.floor(Date.now() / 1000) + 24 * 60 * 60;
+    // Trial period: 3 days before first ₹249 charge
+    const startAt = Math.floor(Date.now() / 1000) + 3 * 24 * 60 * 60;
 
     const subscription = await razorpay.subscriptions.create({
       plan_id: planId,

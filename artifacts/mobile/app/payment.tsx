@@ -12,7 +12,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import Icon from "@/components/Icon";
 import Colors from "@/constants/colors";
 import { useApp, type PaymentInfo } from "@/context/AppContext";
 import {
@@ -37,105 +36,75 @@ const PERKS = [
   { emoji: "✅", text: "Verified & authentic listings only" },
 ];
 
-const PLAN_AMOUNT = { trial: 1, monthly: 249 };
-
 export default function PaymentScreen() {
-  const { activateTrialSubscription, activateFullSubscription, userId } = useApp();
+  const { activateTrialSubscription, userId } = useApp();
   const insets = useSafeAreaInsets();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<"trial" | "monthly">("trial");
 
   const topPadding = Platform.OS === "web" ? 67 : insets.top + 20;
 
   const handleSubscribe = async () => {
     if (isProcessing) return;
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    await trackBuyPremiumClick(selectedPlan);
+    await trackBuyPremiumClick("trial");
     setIsProcessing(true);
 
     try {
-      const amount = PLAN_AMOUNT[selectedPlan];
-      const description =
-        selectedPlan === "trial"
-          ? "1-Day Trial – Full Access (₹249/mo after)"
-          : "Monthly Subscription – Full Access";
-
-      // All platforms use Razorpay Payment Links (hosted on rzp.io — no domain restriction)
+      // ₹1 trial payment via Razorpay Payment Link (no domain restriction)
       const paymentResult = await openRazorpayCheckout({
-        amount: amount * 100, // paise
+        amount: 100, // ₹1 in paise
         currency: "INR",
         name: "SarkariNaukri Premium",
-        description,
+        description: "3-Day Free Trial – ₹249/month after",
         prefill: {},
       });
 
-      // Verify payment signature (non-fatal)
       await verifyPayment(paymentResult);
 
       const paymentInfo: PaymentInfo = {
         paymentId: paymentResult.razorpay_payment_id,
         orderId: paymentResult.razorpay_order_id ?? "",
-        plan: selectedPlan,
-        amount,
+        plan: "trial",
+        amount: 1,
       };
 
-      if (selectedPlan === "trial") {
-        // After ₹1 payment — create the ₹249/month recurring subscription
-        const subscription = await createSubscription({
-          userId,
-          paymentId: paymentResult.razorpay_payment_id,
-        });
+      // Create ₹249/month subscription — starts 3 days from now, auto-renews monthly
+      const subscription = await createSubscription({
+        userId,
+        paymentId: paymentResult.razorpay_payment_id,
+      });
 
-        await activateTrialSubscription(paymentInfo);
+      await activateTrialSubscription(paymentInfo);
 
-        await trackBuyPremiumSuccess({
-          plan: selectedPlan,
-          paymentId: paymentResult.razorpay_payment_id,
-          orderId: paymentResult.razorpay_order_id ?? "",
-          amount,
-        });
+      await trackBuyPremiumSuccess({
+        plan: "trial",
+        paymentId: paymentResult.razorpay_payment_id,
+        orderId: paymentResult.razorpay_order_id ?? "",
+        amount: 1,
+      });
 
-        const nextChargeDate = subscription
-          ? new Date(subscription.startAt * 1000).toLocaleDateString("en-IN", {
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })
-          : "tomorrow";
+      const nextChargeDate = subscription
+        ? new Date(subscription.startAt * 1000).toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          })
+        : "3 days from now";
 
-        Alert.alert(
-          "Trial Activated! 🎉",
-          `Your 24-hour free trial starts now.\n\n₹249/month subscription begins on ${nextChargeDate} and renews automatically. Cancel anytime from Razorpay.`,
-          [{ text: "Start Exploring", onPress: () => router.replace("/(tabs)/") }]
-        );
-      } else {
-        // 4b. Direct ₹249 monthly payment — activate immediately
-        await activateFullSubscription(paymentInfo);
-
-        await trackBuyPremiumSuccess({
-          plan: selectedPlan,
-          paymentId: paymentResult.razorpay_payment_id,
-          orderId: paymentResult.razorpay_order_id ?? "",
-          amount,
-        });
-
-        Alert.alert(
-          "Subscription Active! 👑",
-          "Welcome to SarkariNaukri Premium! You have full access to all features.",
-          [{ text: "Start Exploring", onPress: () => router.replace("/(tabs)/") }]
-        );
-      }
+      Alert.alert(
+        "Trial Activated! 🎉",
+        `Your 3-day free trial has started.\n\n₹249/month subscription begins on ${nextChargeDate} and renews automatically every month. Cancel anytime via Razorpay.`,
+        [{ text: "Explore Jobs", onPress: () => router.replace("/(tabs)/") }]
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Payment failed";
 
       if (msg === "Payment cancelled" || msg === "Payment not completed") {
-        // User dismissed payment — don't show error
         setIsProcessing(false);
         return;
       }
 
-      await trackPaymentFailed(selectedPlan);
+      await trackPaymentFailed("trial");
       Alert.alert(
         "Payment Failed",
         `Something went wrong: ${msg}. Please try again.`,
@@ -155,17 +124,40 @@ export default function PaymentScreen() {
           { paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 24 },
         ]}
       >
+        {/* Header */}
         <View style={styles.headerSection}>
           <View style={styles.crownContainer}>
             <Text style={styles.crownEmoji}>👑</Text>
           </View>
           <Text style={styles.title}>Unlock Full Access</Text>
           <Text style={styles.subtitle}>
-            India's most comprehensive government job platform. Never miss an
-            opportunity again.
+            India's most comprehensive government job platform.{"\n"}Never miss
+            an opportunity again.
           </Text>
         </View>
 
+        {/* Pricing highlight */}
+        <View style={styles.pricingCard}>
+          <View style={styles.pricingRow}>
+            <View>
+              <Text style={styles.trialLabel}>3-Day Free Trial</Text>
+              <Text style={styles.thenText}>Then ₹249/month — cancel anytime</Text>
+            </View>
+            <View style={styles.priceBox}>
+              <Text style={styles.priceAmount}>₹1</Text>
+              <Text style={styles.priceNote}>today</Text>
+            </View>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.recurringRow}>
+            <Text style={styles.recurringIcon}>🔄</Text>
+            <Text style={styles.recurringText}>
+              Auto-renews at ₹249/month after trial · Charged to your UPI / card
+            </Text>
+          </View>
+        </View>
+
+        {/* Perks */}
         <View style={styles.perksCard}>
           {PERKS.map((perk, i) => (
             <View key={i} style={styles.perkRow}>
@@ -177,50 +169,7 @@ export default function PaymentScreen() {
           ))}
         </View>
 
-        <Text style={styles.plansLabel}>Choose Your Plan</Text>
-
-        <TouchableOpacity
-          style={[styles.planCard, selectedPlan === "trial" && styles.planCardSelected]}
-          onPress={() => { setSelectedPlan("trial"); Haptics.selectionAsync(); }}
-        >
-          <View style={styles.planHeader}>
-            <View>
-              <Text style={styles.planName}>1-Day Trial</Text>
-              <Text style={styles.planDesc}>Then ₹249/month</Text>
-            </View>
-            <View style={styles.planPriceBox}>
-              <Text style={styles.planPrice}>₹1</Text>
-              <Text style={styles.planPricePer}>/ day</Text>
-            </View>
-          </View>
-          {selectedPlan === "trial" && (
-            <View style={styles.bestValueBadge}>
-              <Text style={styles.bestValueText}>BEST START</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.planCard, selectedPlan === "monthly" && styles.planCardSelected]}
-          onPress={() => { setSelectedPlan("monthly"); Haptics.selectionAsync(); }}
-        >
-          <View style={styles.planHeader}>
-            <View>
-              <Text style={styles.planName}>Monthly Plan</Text>
-              <Text style={styles.planDesc}>Auto-renews every month</Text>
-            </View>
-            <View style={styles.planPriceBox}>
-              <Text style={styles.planPrice}>₹249</Text>
-              <Text style={styles.planPricePer}>/ month</Text>
-            </View>
-          </View>
-          {selectedPlan === "monthly" && (
-            <View style={styles.bestValueBadge}>
-              <Text style={styles.bestValueText}>FULL ACCESS</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-
+        {/* CTA */}
         <View style={styles.securityRow}>
           <Text style={styles.securityIcon}>🔒</Text>
           <Text style={styles.securityText}>Secured by Razorpay · 256-bit SSL</Text>
@@ -233,13 +182,13 @@ export default function PaymentScreen() {
           activeOpacity={0.85}
         >
           <Text style={styles.subscribeText}>
-            {isProcessing
-              ? "Processing..."
-              : selectedPlan === "trial"
-              ? "Pay ₹1 & Start Trial"
-              : "Subscribe for ₹249/month"}
+            {isProcessing ? "Processing..." : "Start 3-Day Trial for ₹1"}
           </Text>
         </TouchableOpacity>
+
+        <Text style={styles.subCta}>
+          After 3 days, ₹249 is auto-debited every month
+        </Text>
 
         <TouchableOpacity
           onPress={() => router.replace("/(tabs)/")}
@@ -249,9 +198,9 @@ export default function PaymentScreen() {
         </TouchableOpacity>
 
         <Text style={styles.disclaimer}>
-          Secure payment powered by Razorpay. Cancel anytime. By subscribing, you agree
-          to our Terms of Service and Privacy Policy. Subscription auto-renews unless
-          cancelled 24 hours before the renewal date.
+          Secure payment powered by Razorpay. By subscribing, you agree to our
+          Terms of Service. Subscription auto-renews monthly unless cancelled at
+          least 24 hours before the next renewal date.
         </Text>
       </ScrollView>
     </View>
@@ -261,7 +210,8 @@ export default function PaymentScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.background },
   content: { paddingHorizontal: 20 },
-  headerSection: { alignItems: "center", marginBottom: 24 },
+
+  headerSection: { alignItems: "center", marginBottom: 20 },
   crownContainer: {
     width: 72,
     height: 72,
@@ -287,11 +237,36 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 20,
   },
+
+  pricingCard: {
+    backgroundColor: "#EAF0FB",
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: C.primary,
+  },
+  pricingRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  trialLabel: { fontSize: 18, fontWeight: "800", color: C.primary },
+  thenText: { fontSize: 12, color: C.textSecondary, marginTop: 3 },
+  priceBox: { alignItems: "flex-end" },
+  priceAmount: { fontSize: 36, fontWeight: "900", color: C.primary },
+  priceNote: { fontSize: 12, color: C.textSecondary },
+  divider: { height: 1, backgroundColor: "#C5D5EE", marginBottom: 12 },
+  recurringRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  recurringIcon: { fontSize: 14, marginTop: 1 },
+  recurringText: { fontSize: 12, color: C.text, flex: 1, lineHeight: 17 },
+
   perksCard: {
     backgroundColor: C.surface,
     borderRadius: 16,
     padding: 16,
-    marginBottom: 24,
+    marginBottom: 20,
     borderWidth: 1,
     borderColor: C.border,
     gap: 12,
@@ -307,50 +282,23 @@ const styles = StyleSheet.create({
   },
   perkEmoji: { fontSize: 18 },
   perkText: { fontSize: 14, color: C.text, flex: 1, fontWeight: "500" },
-  plansLabel: { fontSize: 16, fontWeight: "700", color: C.text, marginBottom: 12 },
-  planCard: {
-    backgroundColor: C.surface,
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: C.border,
-    position: "relative",
-    overflow: "hidden",
-  },
-  planCardSelected: { borderColor: C.primary, backgroundColor: "#EAF0FB" },
-  planHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  planName: { fontSize: 17, fontWeight: "800", color: C.text, marginBottom: 4 },
-  planDesc: { fontSize: 12, color: C.textSecondary },
-  planPriceBox: { alignItems: "flex-end" },
-  planPrice: { fontSize: 28, fontWeight: "900", color: C.primary },
-  planPricePer: { fontSize: 12, color: C.textSecondary },
-  bestValueBadge: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    backgroundColor: C.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderBottomLeftRadius: 10,
-  },
-  bestValueText: { color: "#fff", fontSize: 9, fontWeight: "800", letterSpacing: 0.5 },
+
   securityRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    marginBottom: 16,
-    marginTop: 4,
+    marginBottom: 12,
   },
   securityIcon: { fontSize: 14 },
   securityText: { fontSize: 12, color: C.textSecondary, fontWeight: "500" },
+
   subscribeButton: {
     backgroundColor: C.primary,
     borderRadius: 16,
-    paddingVertical: 17,
+    paddingVertical: 18,
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 8,
     shadowColor: C.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
@@ -358,8 +306,16 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   buttonDisabled: { opacity: 0.6 },
-  subscribeText: { fontSize: 17, fontWeight: "800", color: "#fff" },
-  skipButton: { alignItems: "center", paddingVertical: 12, marginBottom: 16 },
+  subscribeText: { fontSize: 18, fontWeight: "800", color: "#fff" },
+
+  subCta: {
+    textAlign: "center",
+    fontSize: 12,
+    color: C.textSecondary,
+    marginBottom: 16,
+  },
+
+  skipButton: { alignItems: "center", paddingVertical: 10, marginBottom: 16 },
   skipText: { fontSize: 14, color: C.textSecondary, fontWeight: "600" },
   disclaimer: { fontSize: 11, color: C.textMuted, textAlign: "center", lineHeight: 16 },
 });
