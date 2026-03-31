@@ -21,7 +21,6 @@ import {
   trackPaymentFailed,
 } from "@/services/analytics";
 import {
-  createOrder,
   createSubscription,
   verifyPayment,
   openRazorpayCheckout,
@@ -62,48 +61,27 @@ export default function PaymentScreen() {
           ? "1-Day Trial – Full Access (₹249/mo after)"
           : "Monthly Subscription – Full Access";
 
-      let paymentResult;
+      // All platforms use Razorpay Payment Links (hosted on rzp.io — no domain restriction)
+      const paymentResult = await openRazorpayCheckout({
+        amount: amount * 100, // paise
+        currency: "INR",
+        name: "SarkariNaukri Premium",
+        description,
+        prefill: {},
+      });
 
-      if (Platform.OS === "web") {
-        // Web: create order then open checkout.js popup
-        const order = await createOrder({
-          amount,
-          receipt: `rcpt_${userId}_${Date.now()}`,
-          notes: { userId, plan: selectedPlan },
-        });
-
-        paymentResult = await openRazorpayCheckout({
-          orderId: order?.orderId,
-          amount: order?.amount ?? amount * 100,
-          currency: order?.currency ?? "INR",
-          name: "SarkariNaukri Premium",
-          description,
-          prefill: {},
-        });
-      } else {
-        // Native: open hosted checkout page in browser, poll for result
-        paymentResult = await openRazorpayCheckout({
-          amount: amount * 100, // paise
-          currency: "INR",
-          name: "SarkariNaukri Premium",
-          description,
-          prefill: {},
-        });
-      }
-
-      // 3. Verify ₹1 / ₹249 payment signature (non-fatal)
+      // Verify payment signature (non-fatal)
       await verifyPayment(paymentResult);
 
       const paymentInfo: PaymentInfo = {
         paymentId: paymentResult.razorpay_payment_id,
-        orderId: paymentResult.razorpay_order_id ?? order?.orderId ?? "",
+        orderId: paymentResult.razorpay_order_id ?? "",
         plan: selectedPlan,
         amount,
       };
 
       if (selectedPlan === "trial") {
-        // 4a. After ₹1 payment — create the ₹249/month recurring subscription
-        //     that Razorpay will auto-debit starting 24 hours from now.
+        // After ₹1 payment — create the ₹249/month recurring subscription
         const subscription = await createSubscription({
           userId,
           paymentId: paymentResult.razorpay_payment_id,
@@ -114,7 +92,7 @@ export default function PaymentScreen() {
         await trackBuyPremiumSuccess({
           plan: selectedPlan,
           paymentId: paymentResult.razorpay_payment_id,
-          orderId: paymentResult.razorpay_order_id ?? order?.orderId ?? "",
+          orderId: paymentResult.razorpay_order_id ?? "",
           amount,
         });
 
@@ -138,7 +116,7 @@ export default function PaymentScreen() {
         await trackBuyPremiumSuccess({
           plan: selectedPlan,
           paymentId: paymentResult.razorpay_payment_id,
-          orderId: paymentResult.razorpay_order_id ?? order?.orderId ?? "",
+          orderId: paymentResult.razorpay_order_id ?? "",
           amount,
         });
 

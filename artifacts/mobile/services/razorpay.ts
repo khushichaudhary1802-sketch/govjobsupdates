@@ -224,18 +224,17 @@ async function pollForPayment(
   return null;
 }
 
-async function openNativeCheckout(params: {
+async function openPaymentLink(params: {
   amount: number;
   description: string;
-  userId?: string;
 }): Promise<RazorpayPaymentResult> {
   const apiBase = getApiBase();
   const sessionId = generateSessionId();
 
-  // Callback URL — Razorpay redirects here after payment (on rzp.io domain, no domain restriction)
+  // Callback URL — Razorpay redirects here after payment (hosted on rzp.io, no domain check)
   const callbackUrl = `${apiBase}/api/payments/payment-link-callback`;
 
-  // Step 1: Create a Razorpay Payment Link (hosted on rzp.io)
+  // Step 1: Create a Razorpay Payment Link on the backend
   const linkResp = await fetch(`${apiBase}/api/payments/create-payment-link`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -254,35 +253,45 @@ async function openNativeCheckout(params: {
 
   const { shortUrl } = (await linkResp.json()) as { shortUrl: string; linkId: string };
 
-  // Step 2: Open rzp.io payment page (no domain restriction — hosted by Razorpay)
-  const browserPromise = WebBrowser.openBrowserAsync(shortUrl, {
-    toolbarColor: "#1A3A6B",
-    controlsColor: "#D4A017",
-    showTitle: true,
-  });
-
-  // Step 3: Poll for payment result concurrently
+  // Step 2: Open the rzp.io payment page
+  // Web: open in a new tab (user gesture ensures popup is allowed)
+  // Native: open in an in-app browser
   let paymentResult: { paymentId: string; orderId?: string; signature?: string } | null = null;
   const pollPromise = pollForPayment(sessionId, apiBase, 10 * 60 * 1000);
 
-  await Promise.race([
-    browserPromise,
-    pollPromise.then((r) => { paymentResult = r; }),
-  ]);
+  if (Platform.OS === "web") {
+    // Open payment link in a new browser tab
+    window.open(shortUrl, "_blank", "noopener,noreferrer");
 
-  // Browser closed — give a few seconds for the callback to be processed
-  if (!paymentResult) {
-    await new Promise<void>((r) => setTimeout(r, 4000));
-    try {
-      const url = `${apiBase}/api/payments/check-session?sessionId=${encodeURIComponent(sessionId)}`;
-      const resp = await fetch(url);
-      if (resp.ok) {
-        const data = (await resp.json()) as { status: string; paymentId?: string; orderId?: string; signature?: string };
-        if (data.status === "completed" && data.paymentId) {
-          paymentResult = { paymentId: data.paymentId, orderId: data.orderId, signature: data.signature };
+    // Poll until payment is detected (max 10 min)
+    paymentResult = await pollPromise;
+  } else {
+    // Native: in-app browser, race with polling
+    const browserPromise = WebBrowser.openBrowserAsync(shortUrl, {
+      toolbarColor: "#1A3A6B",
+      controlsColor: "#D4A017",
+      showTitle: true,
+    });
+
+    await Promise.race([
+      browserPromise,
+      pollPromise.then((r) => { paymentResult = r; }),
+    ]);
+
+    // Browser closed before poll resolved — wait a bit for the callback
+    if (!paymentResult) {
+      await new Promise<void>((r) => setTimeout(r, 4000));
+      try {
+        const url = `${apiBase}/api/payments/check-session?sessionId=${encodeURIComponent(sessionId)}`;
+        const resp = await fetch(url);
+        if (resp.ok) {
+          const data = (await resp.json()) as { status: string; paymentId?: string; orderId?: string; signature?: string };
+          if (data.status === "completed" && data.paymentId) {
+            paymentResult = { paymentId: data.paymentId, orderId: data.orderId, signature: data.signature };
+          }
         }
-      }
-    } catch { /* ignore */ }
+      } catch { /* ignore */ }
+    }
   }
 
   if (paymentResult) {
@@ -298,6 +307,7 @@ async function openNativeCheckout(params: {
 
 // ---------------------------------------------------------------------------
 // openRazorpayCheckout — public API
+// All platforms use Payment Links (hosted on rzp.io) — no domain restriction.
 // ---------------------------------------------------------------------------
 export async function openRazorpayCheckout(params: {
   orderId?: string;
@@ -307,15 +317,8 @@ export async function openRazorpayCheckout(params: {
   description: string;
   prefill?: { name?: string; email?: string; contact?: string };
 }): Promise<RazorpayPaymentResult> {
-  if (Platform.OS === "web") {
-    await loadRazorpayScript();
-    return openWebCheckout(params);
-  }
-
-  // Native — open hosted checkout page in device browser, poll for result
-  return openNativeCheckout({
+  return openPaymentLink({
     amount: params.amount,
     description: params.description,
-    userId: params.prefill?.name,
   });
 }
