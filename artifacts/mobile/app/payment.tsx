@@ -1,4 +1,5 @@
 import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -12,7 +13,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import Colors from "@/constants/colors";
 import { useApp, type PaymentInfo } from "@/context/AppContext";
 import {
   trackBuyPremiumClick,
@@ -21,15 +21,13 @@ import {
 } from "@/services/analytics";
 import { openSubscriptionCheckout } from "@/services/razorpay";
 
-const C = Colors.light;
-
 const PERKS = [
-  { emoji: "🔔", text: "Real-time job alerts" },
-  { emoji: "🎯", text: "Advanced filtering by state & category" },
-  { emoji: "🔖", text: "Unlimited bookmarks" },
-  { emoji: "🌐", text: "Apply via official website" },
-  { emoji: "📈", text: "10,000+ government jobs updated daily" },
-  { emoji: "✅", text: "Verified & authentic listings only" },
+  "Real-time government job alerts",
+  "Advanced filtering by state & category",
+  "Unlimited bookmarks",
+  "Apply via official website",
+  "10,000+ jobs updated daily",
+  "Verified & authentic listings only",
 ];
 
 export default function PaymentScreen() {
@@ -37,7 +35,8 @@ export default function PaymentScreen() {
   const insets = useSafeAreaInsets();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const topPadding = Platform.OS === "web" ? 67 : insets.top + 20;
+  const topPadding = Platform.OS === "web" ? 67 : insets.top + 16;
+  const bottomPadding = Platform.OS === "web" ? 34 : insets.bottom + 24;
 
   const handleSubscribe = async () => {
     if (isProcessing) return;
@@ -46,10 +45,6 @@ export default function PaymentScreen() {
     setIsProcessing(true);
 
     try {
-      // Opens Razorpay-hosted subscription page on rzp.io:
-      // - Shows ₹1 trial fee charged today
-      // - Shows ₹249/month recurring mandate starting after 3 days
-      // - User approves both in one screen (UPI AutoPay / card mandate)
       const subscription = await openSubscriptionCheckout({ userId });
 
       const paymentInfo: PaymentInfo = {
@@ -105,88 +100,62 @@ export default function PaymentScreen() {
     <View style={[styles.container, { paddingTop: topPadding }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.content,
-          { paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 24 },
-        ]}
+        contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
       >
-        {/* Header */}
-        <View style={styles.headerSection}>
-          <View style={styles.crownContainer}>
-            <Text style={styles.crownEmoji}>👑</Text>
-          </View>
-          <Text style={styles.title}>Unlock Full Access</Text>
-          <Text style={styles.subtitle}>
-            India's most comprehensive government job platform.{"\n"}Never miss
-            an opportunity again.
-          </Text>
-        </View>
-
-        {/* Pricing highlight */}
-        <View style={styles.pricingCard}>
-          <View style={styles.pricingRow}>
-            <View>
-              <Text style={styles.trialLabel}>3-Day Free Trial</Text>
-              <Text style={styles.thenText}>Then ₹249/month — cancel anytime</Text>
-            </View>
-            <View style={styles.priceBox}>
-              <Text style={styles.priceAmount}>₹1</Text>
-              <Text style={styles.priceNote}>today</Text>
-            </View>
-          </View>
-          <View style={styles.divider} />
-          <View style={styles.recurringRow}>
-            <Text style={styles.recurringIcon}>🔄</Text>
-            <Text style={styles.recurringText}>
-              Auto-renews at ₹249/month after trial · Charged to your UPI / card
-            </Text>
-          </View>
+        {/* Hero pricing */}
+        <View style={styles.heroSection}>
+          <Text style={styles.heroTitle}>Try 3 days for</Text>
+          <Text style={styles.heroPrice}>₹1</Text>
+          <Text style={styles.heroSub}>Then ₹249/month</Text>
+          <Text style={styles.cancelText}>Cancel Anytime</Text>
         </View>
 
         {/* Perks */}
-        <View style={styles.perksCard}>
+        <View style={styles.perksSection}>
           {PERKS.map((perk, i) => (
             <View key={i} style={styles.perkRow}>
-              <View style={styles.perkIcon}>
-                <Text style={styles.perkEmoji}>{perk.emoji}</Text>
+              <View style={styles.checkCircle}>
+                <Text style={styles.checkMark}>✓</Text>
               </View>
-              <Text style={styles.perkText}>{perk.text}</Text>
+              <Text style={styles.perkText}>{perk}</Text>
             </View>
           ))}
         </View>
 
-        {/* CTA */}
-        <View style={styles.securityRow}>
-          <Text style={styles.securityIcon}>🔒</Text>
-          <Text style={styles.securityText}>Secured by Razorpay · 256-bit SSL</Text>
-        </View>
+        {/* Footer CTA */}
+        <Text style={styles.trialNote}>
+          Try for 3 days and{" "}
+          <Text style={styles.trialNoteLink}>cancel anytime</Text>
+        </Text>
 
         <TouchableOpacity
-          style={[styles.subscribeButton, isProcessing && styles.buttonDisabled]}
           onPress={handleSubscribe}
           disabled={isProcessing}
-          activeOpacity={0.85}
+          activeOpacity={0.88}
         >
-          <Text style={styles.subscribeText}>
-            {isProcessing ? "Processing..." : "Start 3-Day Trial for ₹1"}
-          </Text>
+          <LinearGradient
+            colors={["#4F46E5", "#7C3AED", "#DB2777", "#F97316"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[styles.ctaButton, isProcessing && styles.ctaDisabled]}
+          >
+            <Text style={styles.ctaPrice}>₹1</Text>
+            <Text style={styles.ctaLabel}>
+              {isProcessing ? "Processing..." : "START TRIAL  →"}
+            </Text>
+          </LinearGradient>
         </TouchableOpacity>
-
-        <Text style={styles.subCta}>
-          After 3 days, ₹249 is auto-debited every month
-        </Text>
 
         <TouchableOpacity
           onPress={() => router.replace("/(tabs)/")}
           style={styles.skipButton}
         >
-          <Text style={styles.skipText}>Skip for now</Text>
+          <Text style={styles.skipText}>Skip and explore Home</Text>
         </TouchableOpacity>
 
         <Text style={styles.disclaimer}>
-          Secure payment powered by Razorpay. By subscribing, you agree to our
-          Terms of Service. Subscription auto-renews monthly unless cancelled at
-          least 24 hours before the next renewal date.
+          Secured by Razorpay · 256-bit SSL. Subscription auto-renews at ₹249/month
+          after the 3-day trial unless cancelled.
         </Text>
       </ScrollView>
     </View>
@@ -194,114 +163,137 @@ export default function PaymentScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.background },
-  content: { paddingHorizontal: 20 },
-
-  headerSection: { alignItems: "center", marginBottom: 20 },
-  crownContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 22,
-    backgroundColor: "#FFF8E1",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
-    borderWidth: 2,
-    borderColor: C.accent,
+  container: {
+    flex: 1,
+    backgroundColor: "#000",
   },
-  crownEmoji: { fontSize: 36 },
-  title: {
+  content: {
+    paddingHorizontal: 24,
+    alignItems: "center",
+  },
+
+  heroSection: {
+    alignItems: "center",
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  heroTitle: {
+    fontSize: 34,
+    fontWeight: "700",
+    color: "#fff",
+    textAlign: "center",
+    letterSpacing: -0.5,
+  },
+  heroPrice: {
+    fontSize: 110,
+    fontWeight: "900",
+    color: "#fff",
+    textAlign: "center",
+    lineHeight: 120,
+    letterSpacing: -4,
+    textShadow: "0px 4px 16px rgba(255,255,255,0.25)",
+  },
+  heroSub: {
     fontSize: 26,
-    fontWeight: "800",
-    color: C.text,
+    fontWeight: "700",
+    color: "#fff",
     textAlign: "center",
-    marginBottom: 10,
+    marginTop: 4,
   },
-  subtitle: {
-    fontSize: 14,
-    color: C.textSecondary,
-    textAlign: "center",
-    lineHeight: 20,
+  cancelText: {
+    fontSize: 16,
+    color: "#60A5FA",
+    fontWeight: "600",
+    marginTop: 6,
+    textDecorationLine: "underline",
   },
 
-  pricingCard: {
-    backgroundColor: "#EAF0FB",
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 16,
-    borderWidth: 2,
-    borderColor: C.primary,
+  perksSection: {
+    width: "100%",
+    marginTop: 24,
+    marginBottom: 8,
+    gap: 14,
   },
-  pricingRow: {
+  perkRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 14,
-  },
-  trialLabel: { fontSize: 18, fontWeight: "800", color: C.primary },
-  thenText: { fontSize: 12, color: C.textSecondary, marginTop: 3 },
-  priceBox: { alignItems: "flex-end" },
-  priceAmount: { fontSize: 36, fontWeight: "900", color: C.primary },
-  priceNote: { fontSize: 12, color: C.textSecondary },
-  divider: { height: 1, backgroundColor: "#C5D5EE", marginBottom: 12 },
-  recurringRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
-  recurringIcon: { fontSize: 14, marginTop: 1 },
-  recurringText: { fontSize: 12, color: C.text, flex: 1, lineHeight: 17 },
-
-  perksCard: {
-    backgroundColor: C.surface,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: C.border,
     gap: 12,
   },
-  perkRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  perkIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: C.chip,
+  checkCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "#1E293B",
+    borderWidth: 1.5,
+    borderColor: "#475569",
     justifyContent: "center",
     alignItems: "center",
   },
-  perkEmoji: { fontSize: 18 },
-  perkText: { fontSize: 14, color: C.text, flex: 1, fontWeight: "500" },
+  checkMark: {
+    fontSize: 14,
+    color: "#94A3B8",
+    fontWeight: "700",
+    lineHeight: 16,
+  },
+  perkText: {
+    fontSize: 16,
+    color: "#E2E8F0",
+    fontWeight: "500",
+    flex: 1,
+  },
 
-  securityRow: {
+  trialNote: {
+    color: "#64748B",
+    fontSize: 13,
+    textAlign: "center",
+    marginTop: 24,
+    marginBottom: 14,
+  },
+  trialNoteLink: {
+    color: "#60A5FA",
+    textDecorationLine: "underline",
+  },
+
+  ctaButton: {
+    width: "100%",
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    marginBottom: 12,
+    justifyContent: "space-between",
+    borderRadius: 50,
+    paddingVertical: 20,
+    paddingHorizontal: 28,
+    minWidth: 320,
   },
-  securityIcon: { fontSize: 14 },
-  securityText: { fontSize: 12, color: C.textSecondary, fontWeight: "500" },
-
-  subscribeButton: {
-    backgroundColor: C.primary,
-    borderRadius: 16,
-    paddingVertical: 18,
-    alignItems: "center",
-    marginBottom: 8,
-    shadowColor: C.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 6,
+  ctaDisabled: { opacity: 0.6 },
+  ctaPrice: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: "#fff",
   },
-  buttonDisabled: { opacity: 0.6 },
-  subscribeText: { fontSize: 18, fontWeight: "800", color: "#fff" },
+  ctaLabel: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#fff",
+    letterSpacing: 0.5,
+  },
 
-  subCta: {
+  skipButton: {
+    marginTop: 20,
+    paddingVertical: 12,
+  },
+  skipText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#fff",
     textAlign: "center",
-    fontSize: 12,
-    color: C.textSecondary,
-    marginBottom: 16,
   },
 
-  skipButton: { alignItems: "center", paddingVertical: 10, marginBottom: 16 },
-  skipText: { fontSize: 14, color: C.textSecondary, fontWeight: "600" },
-  disclaimer: { fontSize: 11, color: C.textMuted, textAlign: "center", lineHeight: 16 },
+  disclaimer: {
+    fontSize: 11,
+    color: "#475569",
+    textAlign: "center",
+    lineHeight: 16,
+    marginTop: 16,
+    paddingHorizontal: 8,
+  },
 });
