@@ -52,6 +52,7 @@ function RootLayoutNav() {
       <Stack.Screen name="legal/privacy-policy" />
       <Stack.Screen name="legal/terms" />
       <Stack.Screen name="legal/refund-policy" />
+      <Stack.Screen name="legal/contact-support" />
     </Stack>
   );
 }

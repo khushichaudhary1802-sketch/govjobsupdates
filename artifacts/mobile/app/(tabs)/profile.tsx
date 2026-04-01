@@ -106,7 +106,7 @@ export default function ProfileScreen() {
     {
       icon: "mail",
       label: "Contact Support",
-      onPress: () => router.push("/legal/refund-policy"),
+      onPress: () => router.push("/legal/contact-support"),
     },
   ];
 
