@@ -31,12 +31,17 @@ const PERKS = [
 ];
 
 export default function PaymentScreen() {
-  const { activateTrialSubscription, refreshSubscription, userId } = useApp();
+  const { activateTrialSubscription, refreshSubscription, userId, skipPayment } = useApp();
   const insets = useSafeAreaInsets();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const topPadding = Platform.OS === "web" ? 67 : insets.top + 16;
+  const topPadding = Platform.OS === "web" ? 16 : insets.top + 8;
   const bottomPadding = Platform.OS === "web" ? 34 : insets.bottom + 24;
+
+  const handleLater = () => {
+    skipPayment();
+    router.replace("/(tabs)/");
+  };
 
   const handleSubscribe = async () => {
     if (isProcessing) return;
@@ -113,6 +118,18 @@ export default function PaymentScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: topPadding }]}>
+      {/* ✕ Close / Later button */}
+      <View style={styles.topBar}>
+        <View style={{ flex: 1 }} />
+        <TouchableOpacity
+          onPress={handleLater}
+          style={styles.closeBtn}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <Text style={styles.closeIcon}>✕</Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
@@ -171,6 +188,10 @@ export default function PaymentScreen() {
           Secured by Razorpay · 256-bit SSL. Subscription auto-renews at ₹249/month
           after the 3-day trial unless cancelled.
         </Text>
+
+        <TouchableOpacity onPress={handleLater} activeOpacity={0.7} style={styles.laterBtn}>
+          <Text style={styles.laterText}>Maybe Later</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -181,9 +202,41 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#000",
   },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#1E293B",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#334155",
+  },
+  closeIcon: {
+    fontSize: 16,
+    color: "#94A3B8",
+    fontWeight: "600",
+    lineHeight: 18,
+  },
   content: {
     paddingHorizontal: 24,
     alignItems: "center",
+  },
+  laterBtn: {
+    marginTop: 16,
+    paddingVertical: 8,
+  },
+  laterText: {
+    fontSize: 14,
+    color: "#475569",
+    textDecorationLine: "underline",
+    textAlign: "center",
   },
 
   lockBadge: {

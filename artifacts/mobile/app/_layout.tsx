@@ -22,7 +22,7 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
-  const { isLoading, hasCompletedOnboarding, subscriptionStatus } = useApp();
+  const { isLoading, hasCompletedOnboarding, subscriptionStatus, hasSkippedPayment } = useApp();
 
   useEffect(() => {
     trackAppOpen();
@@ -34,13 +34,13 @@ function RootLayoutNav() {
       if (!hasCompletedOnboarding) {
         router.replace("/onboarding");
       } else if (
-        subscriptionStatus === "none" ||
-        subscriptionStatus === "expired"
+        !hasSkippedPayment &&
+        (subscriptionStatus === "none" || subscriptionStatus === "expired")
       ) {
         router.replace("/payment");
       }
     }
-  }, [isLoading, hasCompletedOnboarding, subscriptionStatus]);
+  }, [isLoading, hasCompletedOnboarding, subscriptionStatus, hasSkippedPayment]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

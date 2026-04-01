@@ -68,6 +68,8 @@ export interface AppContextType {
   refreshSubscription: () => Promise<void>;
   isLoading: boolean;
   hasCompletedOnboarding: boolean;
+  hasSkippedPayment: boolean;
+  skipPayment: () => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -106,6 +108,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const [userId, setUserId] = useState<string>("");
+  // In-memory only — resets each app open so payment screen shows again next launch
+  const [hasSkippedPayment, setHasSkippedPayment] = useState(false);
+  const skipPayment = useCallback(() => setHasSkippedPayment(true), []);
 
   // Keep a ref so callbacks always see current userId
   const userIdRef = useRef<string>("");
@@ -351,6 +356,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         refreshSubscription,
         isLoading,
         hasCompletedOnboarding,
+        hasSkippedPayment,
+        skipPayment,
       }}
     >
       {children}
