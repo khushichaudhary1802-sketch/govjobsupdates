@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
@@ -26,7 +26,16 @@ app.use(
   }),
 );
 app.use(cors());
-app.use(express.json());
+
+// Capture raw body buffer for webhook signature verification.
+// The verify callback is called with the raw Buffer before JSON parsing.
+app.use(
+  express.json({
+    verify: (req: Request & { rawBody?: Buffer }, _res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);

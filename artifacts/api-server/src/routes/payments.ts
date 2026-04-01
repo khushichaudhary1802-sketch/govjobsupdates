@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { Router } from "express";
 import Razorpay from "razorpay";
+import { setUserPremium, setUserStatus } from "../services/firebase-admin.js";
 
 const router = Router();
 
@@ -482,6 +483,9 @@ router.post("/create-subscription-link", async (req, res) => {
       notes: { userId: userId ?? "", sessionId },
     });
 
+    // Track userId so check-subscription can write to Firebase on activation
+    if (userId) subscriptionUserMap.set(subscription.id as string, userId);
+
     console.log(
       `[Payments] Subscription link created: ${subscription.id} session=${sessionId} url=${subscription.short_url}`
     );
@@ -499,9 +503,13 @@ router.post("/create-subscription-link", async (req, res) => {
   }
 });
 
+// In-memory map: subscriptionId → userId (populated at create-subscription-link time)
+const subscriptionUserMap = new Map<string, string>();
+
 // ---------------------------------------------------------------------------
 // GET /check-subscription?subscriptionId=xxx
 // Polls Razorpay for subscription status. "authenticated" or "active" = done.
+// Also writes to Firebase when activation is first detected.
 // ---------------------------------------------------------------------------
 router.get("/check-subscription", async (req, res) => {
   try {
@@ -527,6 +535,18 @@ router.get("/check-subscription", async (req, res) => {
           paymentId = items[0].id;
         }
       } catch { /* non-fatal */ }
+
+      // Write to Firebase — use userId from our in-memory map or subscription notes
+      const notes = (sub as any).notes as Record<string, string> | undefined;
+      const uid = subscriptionUserMap.get(subscriptionId) ?? notes?.["userId"] ?? null;
+      if (uid) {
+        await setUserPremium({
+          uid,
+          subscriptionId,
+          trialEndMs: sub.start_at ? (sub.start_at as number) * 1000 : undefined,
+          status: "active",
+        });
+      }
     }
 
     res.json({
