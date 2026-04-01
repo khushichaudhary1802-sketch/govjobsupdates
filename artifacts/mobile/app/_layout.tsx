@@ -48,6 +48,8 @@ function RootLayoutNav() {
       <Stack.Screen name="payment" />
       <Stack.Screen name="preferences" />
       <Stack.Screen name="job/[id]" />
+      <Stack.Screen name="legal/privacy-policy" />
+      <Stack.Screen name="legal/terms" />
     </Stack>
   );
 }

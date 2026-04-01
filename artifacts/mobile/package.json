@@ -56,7 +56,9 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
+    "expo-build-properties": "^1.0.10",
     "firebase": "^12.11.0",
-    "razorpay-checkout": "^1.0.4"
+    "razorpay-checkout": "^1.0.4",
+    "react-native-razorpay": "^2.3.1"
   }
 }

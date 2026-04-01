@@ -564,6 +564,88 @@ router.get("/check-subscription", async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// POST /verify-subscription
+// Called after native Razorpay SDK completes payment.
+// Verifies HMAC signature and marks user as premium.
+// ---------------------------------------------------------------------------
+router.post("/verify-subscription", async (req, res) => {
+  try {
+    const {
+      razorpay_payment_id,
+      razorpay_subscription_id,
+      razorpay_signature,
+      userId,
+    } = req.body as {
+      razorpay_payment_id: string;
+      razorpay_subscription_id: string;
+      razorpay_signature: string;
+      userId?: string;
+    };
+
+    if (!razorpay_payment_id || !razorpay_subscription_id || !razorpay_signature) {
+      res.status(400).json({ error: "Missing required payment fields" });
+      return;
+    }
+
+    const keySecret = process.env["RAZORPAY_KEY_SECRET"];
+    if (!keySecret) {
+      res.status(500).json({ error: "Payment secret not configured" });
+      return;
+    }
+
+    // Razorpay subscription signature: HMAC_SHA256(subscriptionId + "|" + paymentId, secret)
+    const expected = crypto
+      .createHmac("sha256", keySecret)
+      .update(`${razorpay_subscription_id}|${razorpay_payment_id}`)
+      .digest("hex");
+
+    const valid = crypto.timingSafeEqual(
+      Buffer.from(expected, "hex"),
+      Buffer.from(razorpay_signature, "hex")
+    );
+
+    if (!valid) {
+      console.warn("[Payments] verify-subscription: invalid signature");
+      res.status(400).json({ verified: false, error: "Invalid payment signature" });
+      return;
+    }
+
+    // Fetch subscription from Razorpay to get plan details
+    const razorpay = getRazorpay();
+    const sub = await razorpay.subscriptions.fetch(razorpay_subscription_id);
+
+    // Resolve userId from request body or subscription notes
+    const notes = (sub as any).notes as Record<string, string> | undefined;
+    const uid = userId ?? subscriptionUserMap.get(razorpay_subscription_id) ?? notes?.["userId"];
+
+    if (uid) {
+      await setUserPremium({
+        uid,
+        subscriptionId: razorpay_subscription_id,
+        trialEndMs: sub.start_at ? (sub.start_at as number) * 1000 : undefined,
+        status: "active",
+      });
+    }
+
+    console.log(
+      `[Payments] verify-subscription OK: sub=${razorpay_subscription_id} uid=${uid ?? "unknown"}`
+    );
+
+    res.json({
+      verified: true,
+      subscriptionId: razorpay_subscription_id,
+      paymentId: razorpay_payment_id,
+      planId: sub.plan_id,
+      startAt: sub.start_at,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Verification failed";
+    console.error("[Payments] verify-subscription error:", msg);
+    res.status(500).json({ error: msg });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // POST /create-subscription  (kept for backward compatibility)
 // ---------------------------------------------------------------------------
 router.post("/create-subscription", async (req, res) => {

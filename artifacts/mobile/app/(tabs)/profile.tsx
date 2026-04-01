@@ -83,11 +83,31 @@ export default function ProfileScreen() {
     await refreshSubscription();
   };
 
-  const infoItems = [
-    { icon: "file-text", label: "Privacy Policy" },
-    { icon: "file",      label: "Terms of Service" },
-    { icon: "refresh-cw",label: "Refund Policy" },
-    { icon: "mail",      label: "Contact Support" },
+  const infoItems: Array<{
+    icon: string;
+    label: string;
+    onPress: () => void;
+  }> = [
+    {
+      icon: "file-text",
+      label: "Privacy Policy",
+      onPress: () => router.push("/legal/privacy-policy"),
+    },
+    {
+      icon: "file",
+      label: "Terms of Service",
+      onPress: () => router.push("/legal/terms"),
+    },
+    {
+      icon: "refresh-cw",
+      label: "Refund Policy",
+      onPress: () => router.push("/legal/terms"),
+    },
+    {
+      icon: "mail",
+      label: "Contact Support",
+      onPress: () => router.push("/legal/privacy-policy"),
+    },
   ];
 
   return (
@@ -232,6 +252,7 @@ export default function ProfileScreen() {
               <TouchableOpacity
                 key={item.label}
                 style={[styles.infoRow, i < infoItems.length - 1 && styles.infoBorder]}
+                onPress={item.onPress}
               >
                 <Icon name={item.icon} size={16} color={C.primary} />
                 <Text style={styles.infoLabel}>{item.label}</Text>

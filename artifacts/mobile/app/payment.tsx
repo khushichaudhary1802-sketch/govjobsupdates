@@ -57,7 +57,7 @@ export default function PaymentScreen() {
       // Activate locally immediately for instant UI unlock
       await activateTrialSubscription(paymentInfo);
 
-      // Then sync with server to confirm and get accurate trialEnd
+      // Sync with server to confirm and get accurate trialEnd from backend
       void refreshSubscription();
 
       await trackBuyPremiumSuccess({
@@ -77,14 +77,25 @@ export default function PaymentScreen() {
         `Your 3-day trial has started.\n\n₹249 will be auto-debited on ${nextChargeDate} and every month after. Cancel anytime via Razorpay.`,
         [{ text: "Explore Jobs", onPress: () => router.replace("/(tabs)/") }]
       );
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Payment failed";
+    } catch (err: unknown) {
+      // Handle both Error objects and Razorpay native SDK error objects { code, description }
+      const rzpErr = err as { code?: number; description?: string } | null;
+      const msg =
+        err instanceof Error
+          ? err.message
+          : typeof rzpErr?.description === "string"
+          ? rzpErr.description
+          : "Payment failed";
 
-      if (
+      // User cancelled — silent, just re-enable the button
+      const userCancelled =
         msg === "Payment cancelled" ||
         msg === "Payment not completed" ||
-        msg === "Subscription not activated"
-      ) {
+        msg === "Subscription not activated" ||
+        msg.toLowerCase().includes("cancel") ||
+        rzpErr?.code === 0;
+
+      if (userCancelled) {
         setIsProcessing(false);
         return;
       }
@@ -92,7 +103,7 @@ export default function PaymentScreen() {
       await trackPaymentFailed("trial");
       Alert.alert(
         "Payment Failed",
-        `Something went wrong: ${msg}. Please try again.`,
+        `Something went wrong. Please try again.\n\n${msg}`,
         [{ text: "OK" }]
       );
     } finally {
