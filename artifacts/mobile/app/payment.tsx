@@ -15,8 +15,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp, type PaymentInfo } from "@/context/AppContext";
 import {
-  trackBuyPremiumClick,
-  trackBuyPremiumSuccess,
+  trackInAppPurchaseInitiated,
+  trackInAppPurchaseSuccess,
   trackPaymentFailed,
 } from "@/services/analytics";
 import { openSubscriptionCheckout } from "@/services/razorpay";
@@ -41,7 +41,7 @@ export default function PaymentScreen() {
   const handleSubscribe = async () => {
     if (isProcessing) return;
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    await trackBuyPremiumClick("trial");
+    await trackInAppPurchaseInitiated({ plan: "trial", value: 1 });
     setIsProcessing(true);
 
     try {
@@ -60,11 +60,11 @@ export default function PaymentScreen() {
       // Sync with server to confirm and get accurate trialEnd from backend
       void refreshSubscription();
 
-      await trackBuyPremiumSuccess({
+      await trackInAppPurchaseSuccess({
         plan: "trial",
-        paymentId: subscription.paymentId ?? subscription.subscriptionId,
+        transactionId: subscription.paymentId ?? subscription.subscriptionId,
+        value: 1,
         orderId: subscription.subscriptionId,
-        amount: 1,
       });
 
       const nextChargeDate = new Date(subscription.startAt * 1000).toLocaleDateString(

@@ -15,7 +15,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider, useApp } from "@/context/AppContext";
-import { trackAppOpen } from "@/services/analytics";
+import { trackAppOpen, trackFirstAppOpen } from "@/services/analytics";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -26,6 +26,7 @@ function RootLayoutNav() {
 
   useEffect(() => {
     trackAppOpen();
+    trackFirstAppOpen();
   }, []);
 
   useEffect(() => {

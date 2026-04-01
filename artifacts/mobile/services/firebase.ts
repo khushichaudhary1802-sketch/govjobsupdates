@@ -39,9 +39,19 @@ export async function trackEvent(
   params?: Record<string, string | number | boolean>,
 ) {
   try {
+    // ── Web: Firebase Analytics (web SDK) ───────────────────────────────────
     const analytics = await getAnalyticsInstance();
     if (analytics) {
       logEvent(analytics, eventName, params);
+    }
+
+    // ── Native (Android/iOS): log in dev; production needs @react-native-firebase
+    if (Platform.OS !== "web") {
+      if (__DEV__) {
+        console.log(`[Firebase Analytics] ${eventName}`, params ?? {});
+      }
+      // Production native tracking: install @react-native-firebase/analytics
+      // and add google-services.json (see FIREBASE_NATIVE_SETUP.md)
     }
   } catch {
     // Non-fatal — analytics failures should never break the app
