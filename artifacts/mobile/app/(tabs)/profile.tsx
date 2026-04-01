@@ -101,12 +101,12 @@ export default function ProfileScreen() {
     {
       icon: "refresh-cw",
       label: "Refund Policy",
-      onPress: () => router.push("/legal/terms"),
+      onPress: () => router.push("/legal/refund-policy"),
     },
     {
       icon: "mail",
       label: "Contact Support",
-      onPress: () => router.push("/legal/privacy-policy"),
+      onPress: () => router.push("/legal/refund-policy"),
     },
   ];
 

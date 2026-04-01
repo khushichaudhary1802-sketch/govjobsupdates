@@ -13,8 +13,9 @@ import Colors from "@/constants/colors";
 
 const C = Colors.light;
 const LAST_UPDATED = "April 1, 2026";
-const APP_NAME = "SarkariNaukri";
-const CONTACT_EMAIL = "support@creatorflo.app";
+const APP_NAME = "GovJobAlert – Sarkari Naukri";
+const PACKAGE = "enhancore.fix.ai.skin.enhancer.photo.editor";
+const CONTACT_EMAIL = "priyankagoswami0398@gmail.com";
 
 export default function TermsOfServiceScreen() {
   const insets = useSafeAreaInsets();
@@ -26,7 +27,7 @@ export default function TermsOfServiceScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Terms of Service</Text>
+        <Text style={styles.title}>Terms & Conditions</Text>
         <View style={styles.backBtn} />
       </View>
 
@@ -37,51 +38,70 @@ export default function TermsOfServiceScreen() {
           { paddingBottom: Platform.OS === "web" ? 40 : insets.bottom + 40 },
         ]}
       >
-        <Text style={styles.lastUpdated}>Last updated: {LAST_UPDATED}</Text>
+        <Text style={styles.appName}>{APP_NAME}</Text>
+        <Text style={styles.lastUpdated}>Effective Date: {LAST_UPDATED}</Text>
+        <Text style={styles.intro}>
+          {`Welcome to ${APP_NAME} (package name: ${PACKAGE}). By downloading, installing, or using this application, you agree to comply with and be bound by the following Terms & Conditions.`}
+        </Text>
 
         <Section title="1. Acceptance of Terms">
-          {`By downloading, installing, or using ${APP_NAME}, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use the application.`}
+          {`By accessing or using this app, you agree to be legally bound by these Terms. If you do not agree, please do not use the app.`}
         </Section>
 
-        <Section title="2. Description of Service">
-          {`${APP_NAME} is a mobile application that aggregates and displays government job listings from publicly available sources in India. We provide:\n\n• Curated government job listings\n• Search and filter by state, district, and category\n• Job alerts and notifications\n• Bookmark functionality\n• Direct links to official government job application portals`}
+        <Section title="2. App Description">
+          {`${APP_NAME} provides users with:\n\n• Government job notifications\n• Job-related information\n• Redirects to official websites for application\n\n⚠️ This app is not affiliated with any government organization.`}
         </Section>
 
-        <Section title="3. Subscription & Billing">
-          {`3.1 Trial Period: New users may access the app for ₹1 for a 3-day trial period.\n\n3.2 Subscription: After the trial, your subscription automatically renews at ₹249 per month unless cancelled.\n\n3.3 Payment: All payments are processed securely by Razorpay. By subscribing, you authorize us to charge your payment method on a recurring basis.\n\n3.4 Cancellation: You may cancel your subscription at any time through Razorpay. Cancellation takes effect at the end of the current billing period. No refunds are issued for partial months.\n\n3.5 Price Changes: We reserve the right to modify subscription prices with 30 days' advance notice.`}
+        <Section title="3. User Responsibilities">
+          {`You agree to:\n\n• Use the app only for lawful purposes\n• Not misuse or attempt to hack the app\n• Provide accurate information when required\n• Not copy, modify, or distribute app content without permission`}
         </Section>
 
-        <Section title="4. Refund Policy">
-          {`4.1 The ₹1 trial charge is non-refundable.\n\n4.2 Monthly subscription charges are non-refundable once processed, except where required by applicable law.\n\n4.3 If you believe you have been charged incorrectly, contact us at ${CONTACT_EMAIL} within 7 days of the charge.`}
+        <Section title="4. Subscription & Payments">
+          {`The app may require payment to unlock features.\nPayments are securely processed via Razorpay.\n\nBy purchasing, you agree to:\n• Pay applicable charges\n• Subscription terms (if applicable)\n\nImportant:\n• All payments are final and non-refundable, unless required by law\n• Subscription validity depends on the selected plan`}
         </Section>
 
-        <Section title="5. Content Disclaimer">
-          {`5.1 ${APP_NAME} aggregates job listings from government portals and third-party sources. We do not guarantee the accuracy, completeness, or timeliness of the information.\n\n5.2 Always verify job details from the official government website before applying.\n\n5.3 We are not affiliated with any government organization or department.\n\n5.4 We are not responsible for any actions taken based on information in the app.`}
+        <Section title="5. Access & Restrictions">
+          {`• The app is locked by default\n• Access is granted only after successful payment\n\nWe reserve the right to:\n• Modify or discontinue features\n• Restrict access in case of misuse`}
         </Section>
 
-        <Section title="6. User Responsibilities">
-          {`You agree to:\n\n• Use the app only for lawful purposes\n• Not attempt to reverse engineer, copy, or redistribute the app\n• Not use automated tools to scrape or extract content\n• Provide accurate information when required\n• Keep your account information secure`}
+        <Section title="6. External Links">
+          {`The app may redirect users to third-party or government websites.\nWe are not responsible for:\n\n• Content accuracy on external sites\n• Any loss or damage caused by third-party services`}
         </Section>
 
         <Section title="7. Intellectual Property">
-          {`All content, features, and functionality of ${APP_NAME} are owned by CreatorFlo and protected by Indian and international intellectual property laws. You may not reproduce, distribute, or create derivative works without express written permission.`}
+          {`All app content (design, logo, text) is owned by us.\nUnauthorized use, copying, or reproduction is strictly prohibited.`}
         </Section>
 
         <Section title="8. Limitation of Liability">
-          {`To the maximum extent permitted by applicable law, ${APP_NAME} and its operators shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including loss of profits, data, or goodwill, arising from your use of the service.`}
+          {`We are not responsible for:\n\n• Any errors or outdated job information\n• Losses arising from reliance on app content\n• Technical issues, downtime, or interruptions`}
         </Section>
 
-        <Section title="9. Governing Law">
-          {`These Terms are governed by the laws of India. Any disputes arising from these terms shall be subject to the exclusive jurisdiction of the courts in India.`}
+        <Section title="9. Termination">
+          {`We may suspend or terminate access if:\n\n• Terms are violated\n• Fraud or misuse is detected`}
         </Section>
 
-        <Section title="10. Changes to Terms">
-          {`We reserve the right to update these Terms at any time. We will provide notice of significant changes within the app. Continued use after changes constitutes acceptance.`}
+        <Section title="10. Privacy">
+          {`Your use of the app is also governed by our Privacy Policy.`}
         </Section>
 
-        <Section title="11. Contact">
-          {`For questions about these Terms:\n\nEmail: ${CONTACT_EMAIL}\nWebsite: https://creatorflo.app`}
+        <Section title="11. Changes to Terms">
+          {`We reserve the right to update these Terms at any time.\nContinued use of the app means you accept the updated terms.`}
         </Section>
+
+        <Section title="12. Governing Law">
+          {`These Terms shall be governed by the laws of India.`}
+        </Section>
+
+        <Section title="13. Contact Information">
+          {`For any questions or concerns:\n\n📧 Email: ${CONTACT_EMAIL}`}
+        </Section>
+
+        <Text style={styles.disclaimer}>
+          ⚠️ Disclaimer{"\n"}
+          This app is not a government app.{"\n"}
+          All job information is collected from publicly available sources.{"\n"}
+          Users should always verify details on official websites.
+        </Text>
       </ScrollView>
     </View>
   );
@@ -90,7 +110,7 @@ export default function TermsOfServiceScreen() {
 function Section({ title, children }: { title: string; children: string }) {
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <Text style={styles.sectionTitle}>📌 {title}</Text>
       <Text style={styles.body}>{children}</Text>
     </View>
   );
@@ -111,9 +131,20 @@ const styles = StyleSheet.create({
   backBtn: { width: 40, alignItems: "flex-start" },
   backIcon: { fontSize: 22, color: C.primary, fontWeight: "700" },
   title: { fontSize: 18, fontWeight: "800", color: C.text },
-  content: { paddingHorizontal: 20, paddingTop: 20, gap: 24 },
-  lastUpdated: { fontSize: 12, color: C.textMuted, marginBottom: 4 },
+  content: { paddingHorizontal: 20, paddingTop: 20, gap: 20 },
+  appName: { fontSize: 17, fontWeight: "800", color: C.primary },
+  lastUpdated: { fontSize: 12, color: C.textMuted, marginTop: -8 },
+  intro: { fontSize: 14, color: C.textSecondary, lineHeight: 22 },
   section: { gap: 8 },
   sectionTitle: { fontSize: 15, fontWeight: "800", color: C.text },
   body: { fontSize: 14, color: C.textSecondary, lineHeight: 22 },
+  disclaimer: {
+    fontSize: 13,
+    color: C.textMuted,
+    lineHeight: 20,
+    borderTopWidth: 1,
+    borderTopColor: C.border,
+    paddingTop: 16,
+    fontStyle: "italic",
+  },
 });

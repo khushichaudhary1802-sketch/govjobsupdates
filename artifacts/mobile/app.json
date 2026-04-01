@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.creatorflo.sarkarinauki",
+      "bundleIdentifier": "enhancore.fix.ai.skin.enhancer.photo.editor",
       "buildNumber": "1",
       "infoPlist": {
         "NSAppTransportSecurity": {
@@ -24,7 +24,7 @@
       }
     },
     "android": {
-      "package": "com.creatorflo.sarkarinauki",
+      "package": "enhancore.fix.ai.skin.enhancer.photo.editor",
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
