@@ -31,7 +31,7 @@ const PERKS = [
 ];
 
 export default function PaymentScreen() {
-  const { activateTrialSubscription, userId } = useApp();
+  const { activateTrialSubscription, refreshSubscription, userId } = useApp();
   const insets = useSafeAreaInsets();
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -54,7 +54,11 @@ export default function PaymentScreen() {
         amount: 1,
       };
 
+      // Activate locally immediately for instant UI unlock
       await activateTrialSubscription(paymentInfo);
+
+      // Then sync with server to confirm and get accurate trialEnd
+      void refreshSubscription();
 
       await trackBuyPremiumSuccess({
         plan: "trial",
@@ -70,7 +74,7 @@ export default function PaymentScreen() {
 
       Alert.alert(
         "Trial Activated! 🎉",
-        `Your 3-day free trial has started.\n\n₹249 will be auto-debited on ${nextChargeDate} and every month after. Cancel anytime via Razorpay.`,
+        `Your 3-day trial has started.\n\n₹249 will be auto-debited on ${nextChargeDate} and every month after. Cancel anytime via Razorpay.`,
         [{ text: "Explore Jobs", onPress: () => router.replace("/(tabs)/") }]
       );
     } catch (err) {
@@ -102,6 +106,12 @@ export default function PaymentScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
       >
+        {/* Lock icon */}
+        <View style={styles.lockBadge}>
+          <Text style={styles.lockIcon}>🔒</Text>
+          <Text style={styles.lockLabel}>PREMIUM ACCESS</Text>
+        </View>
+
         {/* Hero pricing */}
         <View style={styles.heroSection}>
           <Text style={styles.heroTitle}>Try 3 days for</Text>
@@ -146,13 +156,6 @@ export default function PaymentScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={() => router.replace("/(tabs)/")}
-          style={styles.skipButton}
-        >
-          <Text style={styles.skipText}>Skip and explore Home</Text>
-        </TouchableOpacity>
-
         <Text style={styles.disclaimer}>
           Secured by Razorpay · 256-bit SSL. Subscription auto-renews at ₹249/month
           after the 3-day trial unless cancelled.
@@ -172,9 +175,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
+  lockBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#1E293B",
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#334155",
+  },
+  lockIcon: { fontSize: 16 },
+  lockLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#94A3B8",
+    letterSpacing: 1.5,
+  },
+
   heroSection: {
     alignItems: "center",
-    paddingTop: 16,
+    paddingTop: 8,
     paddingBottom: 8,
   },
   heroTitle: {
@@ -191,7 +214,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 120,
     letterSpacing: -4,
-    textShadow: "0px 4px 16px rgba(255,255,255,0.25)",
   },
   heroSub: {
     fontSize: 26,
@@ -277,23 +299,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
-  skipButton: {
-    marginTop: 20,
-    paddingVertical: 12,
-  },
-  skipText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#fff",
-    textAlign: "center",
-  },
-
   disclaimer: {
     fontSize: 11,
     color: "#475569",
     textAlign: "center",
     lineHeight: 16,
-    marginTop: 16,
+    marginTop: 20,
     paddingHorizontal: 8,
   },
 });

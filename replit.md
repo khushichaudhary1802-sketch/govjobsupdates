@@ -101,11 +101,18 @@ SarkariNaukri — Expo React Native government jobs app.
 - **Categories** (7): All India Govt Jobs, State Govt Jobs, Bank Jobs, Teaching Jobs, Engineering Jobs, Railway Jobs, Police/Defence Jobs.
 - **Screens**: Onboarding (3-step), Payment/Paywall (₹1 trial → ₹249/month), Jobs feed (search + filter), Job detail (in-app browser), Bookmarks, Profile.
 - **Backend**: API server at `artifacts/api-server` scrapes jobkaka.com RSS for live data (30-min cache); mobile calls `/api/jobs` for live job data.
-- **Payments**: Razorpay — backend creates orders at `/api/payments/create-order`, verifies HMAC signatures at `/api/payments/verify-payment`. Frontend opens Razorpay checkout.js (web) or device browser (native).
-- **Firebase**: `services/firebase.ts` — Firestore stores `users/{userId}` with `isPremium`, `paymentId`, `orderId`, `plan`, `date`. Firebase Analytics tracks events on web.
+- **Payments**: Razorpay Subscription — ₹1 addon for 3-day trial, then ₹249/month auto-renewal. Backend creates Razorpay Subscription at `POST /api/payments/create-subscription-link` → returns `rzp.io` short URL (no domain restriction). Frontend opens in WebView/in-app browser, polls `GET /api/payments/check-subscription?subscriptionId=...` every 3s until `activated: true`.
+- **Subscription Flow**: `openSubscriptionCheckout()` in `services/razorpay.ts` → backend creates plan + subscription → opens Razorpay-hosted page → polls until activated → calls `activateTrialSubscription()` in AppContext → stores locally + writes to Firebase.
+- **Firebase Client SDK**: `services/firebase.ts` — Firestore stores `users/{userId}` with `isPremium`, `paymentId`, `orderId`, `plan`, `date`. Firebase Analytics tracks events on web.
+- **Firebase Admin SDK** (backend): `src/services/firebase-admin.ts` — writes to Firestore `users` collection via `setUserPremium()` / `setUserStatus()`. Reads via `getUserStatus()`. Used by webhook handler and user-status endpoint.
+- **Subscription Status** (AppContext): `"active"` = subscribed (trial or full), `"expired"` = cancelled/lapsed, `"none"` = never subscribed. On startup: loads AsyncStorage cache first (fast), then calls `GET /api/user-status?uid=...` in background to reconcile with backend (handles reinstall / cross-device sync).
+- **Backend Endpoints**: `POST /api/payments/create-subscription-link`, `GET /api/payments/check-subscription`, `POST /api/webhook` (Razorpay events with HMAC verification), `GET /api/user-status`.
+- **Webhook**: `POST /api/webhook` verifies Razorpay HMAC signature, handles `subscription.activated`, `subscription.charged`, `payment.failed`, `subscription.cancelled`, `subscription.halted` → writes to Firestore via Admin SDK.
+- **Access Gate** (`app/_layout.tsx`): after onboarding, if `subscriptionStatus === "none" || "expired"` → routes to `/payment`. Payment screen has NO skip button.
+- **Profile Screen**: shows subscription status ("Premium Active" / "Trial Active" / "Not Subscribed"), trial countdown from `trialEndDate`, refresh button syncs from backend. Upgrade button routes to `/payment`.
 - **Analytics**: `services/analytics.ts` — wraps Firebase Analytics + Meta Pixel (injected via script tag on web). Tracks: `app_open`, `buy_premium_click`, `buy_premium_success`, `payment_failed`, `feature_used`. Also fires Meta Pixel: `PageView`, `InitiateCheckout`, `Purchase`, `buy_premium_success`.
 - **User ID**: Generated once on first app load, stored in AsyncStorage (`@govtjobs_user_id`), used as Firestore document key.
-- **Env vars**: `RAZORPAY_KEY_ID` + `RAZORPAY_KEY_SECRET` (secrets), `EXPO_PUBLIC_RAZORPAY_KEY_ID` + `EXPO_PUBLIC_META_PIXEL_ID` (shared env vars for frontend).
+- **Env vars needed**: `RAZORPAY_KEY_ID` + `RAZORPAY_KEY_SECRET` (secrets), `FIREBASE_SERVICE_ACCOUNT` (JSON string of Firebase service account key), `WEBHOOK_SECRET` (from Razorpay Dashboard → Webhooks), `EXPO_PUBLIC_RAZORPAY_KEY_ID` + `EXPO_PUBLIC_META_PIXEL_ID` (public frontend vars).
 
 ### `scripts` (`@workspace/scripts`)
 

@@ -2,7 +2,6 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React from "react";
 import {
-  Alert,
   Platform,
   ScrollView,
   StyleSheet,
@@ -33,61 +32,55 @@ export default function ProfileScreen() {
     preferences,
     bookmarks,
     subscriptionStatus,
-    trialStartDate,
-    activateFullSubscription,
+    trialEndDate,
+    refreshSubscription,
   } = useApp();
   const insets = useSafeAreaInsets();
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
 
+  // Calculate time remaining in the trial (from trialEndDate)
   const getTrialTimeLeft = () => {
-    if (!trialStartDate) return "";
-    const start = new Date(trialStartDate);
-    const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+    if (!trialEndDate) return "";
+    const end = new Date(trialEndDate);
     const now = new Date();
     const diff = end.getTime() - now.getTime();
-    if (diff <= 0) return "Expired";
-    const hours = Math.floor(diff / (1000 * 60 * 60));
+    if (diff <= 0) return "Trial ended";
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    if (days > 0) return `${days}d ${hours}h remaining`;
     return `${hours}h ${minutes}m remaining`;
   };
 
-  const statusLabel = {
+  const statusLabel: Record<string, string> = {
     trial:   "Trial Active",
     active:  "Premium Active",
     expired: "Trial Expired",
-    none:    "Free",
+    none:    "Not Subscribed",
   };
 
-  const statusColor = {
+  const statusColor: Record<string, string> = {
     trial:   C.warning,
     active:  C.success,
     expired: C.danger,
     none:    C.textMuted,
   };
 
-  const subIcon = {
+  const subIcon: Record<string, string> = {
     active:  "crown",
     trial:   "clock",
     expired: "lock",
     none:    "lock",
-  }[subscriptionStatus];
+  };
 
-  const handleUpgrade = async () => {
+  const handleUpgradePress = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert(
-      "Upgrade to Premium",
-      "Get full access for ₹249/month with auto-renewal.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Subscribe ₹249/month",
-          onPress: async () => {
-            await activateFullSubscription();
-            Alert.alert("Subscribed!", "You now have full premium access.");
-          },
-        },
-      ]
-    );
+    router.push("/payment");
+  };
+
+  const handleRefresh = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await refreshSubscription();
   };
 
   const infoItems = [
@@ -101,6 +94,9 @@ export default function ProfileScreen() {
     <View style={[styles.container, { paddingTop: topPadding }]}>
       <View style={styles.header}>
         <Text style={styles.title}>Profile</Text>
+        <TouchableOpacity onPress={handleRefresh} style={styles.refreshBtn}>
+          <Icon name="refresh-cw" size={18} color={C.primary} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -115,15 +111,22 @@ export default function ProfileScreen() {
         {/* Subscription Card */}
         <View style={styles.subscriptionCard}>
           <View style={styles.subCardTop}>
-            <View style={styles.subIconWrapper}>
+            <View
+              style={[
+                styles.subIconWrapper,
+                { backgroundColor: statusColor[subscriptionStatus] + "18" },
+              ]}
+            >
               <Icon
-                name={subIcon}
+                name={subIcon[subscriptionStatus]}
                 size={26}
                 color={statusColor[subscriptionStatus]}
               />
             </View>
             <View style={styles.subInfo}>
-              <Text style={styles.subStatusLabel}>
+              <Text
+                style={[styles.subStatusLabel, { color: statusColor[subscriptionStatus] }]}
+              >
                 {statusLabel[subscriptionStatus]}
               </Text>
               {subscriptionStatus === "trial" && (
@@ -132,23 +135,23 @@ export default function ProfileScreen() {
               {subscriptionStatus === "active" && (
                 <Text style={styles.subDesc}>₹249/month · Auto-renews</Text>
               )}
-              {(subscriptionStatus === "expired" ||
-                subscriptionStatus === "none") && (
-                <Text style={styles.subDesc}>
-                  Subscribe to access all features
-                </Text>
+              {(subscriptionStatus === "expired" || subscriptionStatus === "none") && (
+                <Text style={styles.subDesc}>Subscribe to access all features</Text>
               )}
             </View>
           </View>
+
           {subscriptionStatus !== "active" && (
             <TouchableOpacity
               style={styles.upgradeButton}
-              onPress={handleUpgrade}
+              onPress={handleUpgradePress}
             >
               <Text style={styles.upgradeText}>
                 {subscriptionStatus === "trial"
-                  ? "Upgrade to Full Plan"
-                  : "Subscribe ₹249/month"}
+                  ? "Manage Subscription"
+                  : subscriptionStatus === "expired"
+                  ? "Renew — ₹1 for 3 days"
+                  : "Start Trial — ₹1 for 3 days"}
               </Text>
             </TouchableOpacity>
           )}
@@ -250,8 +253,12 @@ const styles = StyleSheet.create({
     backgroundColor: C.surface,
     borderBottomWidth: 1,
     borderBottomColor: C.border,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   title: { fontSize: 22, fontWeight: "800", color: C.text },
+  refreshBtn: { padding: 4 },
   content: { paddingHorizontal: 16, paddingTop: 16, gap: 20 },
   subscriptionCard: {
     backgroundColor: C.surface,
@@ -266,7 +273,6 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 16,
-    backgroundColor: C.chip,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -274,7 +280,6 @@ const styles = StyleSheet.create({
   subStatusLabel: {
     fontSize: 16,
     fontWeight: "800",
-    color: C.text,
     marginBottom: 4,
   },
   subTimer: { fontSize: 13, color: C.warning, fontWeight: "600" },
