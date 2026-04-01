@@ -9,6 +9,9 @@ import {
 import { getAnalytics, logEvent, isSupported } from "firebase/analytics";
 import { Platform } from "react-native";
 
+// ---------------------------------------------------------------------------
+// Firebase web config (used for Firestore + web analytics)
+// ---------------------------------------------------------------------------
 const firebaseConfig = {
   apiKey: "AIzaSyAzOW87uc2VIa-2kdJBnEF-BwHOD5H3lzY",
   authDomain: "flutter-ai-playground-61d57.firebaseapp.com",
@@ -22,9 +25,12 @@ const firebaseConfig = {
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]!;
 const db = getFirestore(app);
 
+// ---------------------------------------------------------------------------
+// Web Analytics instance (Firebase JS SDK — browser only)
+// ---------------------------------------------------------------------------
 let analyticsInstance: ReturnType<typeof getAnalytics> | null = null;
 
-async function getAnalyticsInstance() {
+async function getWebAnalytics() {
   if (Platform.OS !== "web") return null;
   if (analyticsInstance) return analyticsInstance;
   const supported = await isSupported();
@@ -34,30 +40,71 @@ async function getAnalyticsInstance() {
   return analyticsInstance;
 }
 
+// ---------------------------------------------------------------------------
+// Native Analytics (react-native-firebase — works after EAS Build)
+// Expo Go does NOT support native modules, so this is wrapped in try/catch.
+// ---------------------------------------------------------------------------
+type NativeAnalytics = {
+  logEvent: (name: string, params?: Record<string, unknown>) => Promise<void>;
+};
+
+let nativeAnalyticsCache: NativeAnalytics | null | "unavailable" = null;
+
+async function getNativeAnalytics(): Promise<NativeAnalytics | null> {
+  if (Platform.OS === "web") return null;
+  if (nativeAnalyticsCache === "unavailable") return null;
+  if (nativeAnalyticsCache !== null) return nativeAnalyticsCache;
+
+  try {
+    // Dynamic import — only resolves in native builds (EAS), not in Expo Go
+    const mod = await import("@react-native-firebase/analytics");
+    const analyticsModule = mod.default ?? mod;
+    if (typeof analyticsModule === "function") {
+      const instance = analyticsModule();
+      nativeAnalyticsCache = instance as NativeAnalytics;
+      return nativeAnalyticsCache;
+    }
+    nativeAnalyticsCache = "unavailable";
+    return null;
+  } catch {
+    // Expected in Expo Go — native module not linked
+    nativeAnalyticsCache = "unavailable";
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Unified trackEvent — fires to web SDK (browser) OR native SDK (Android)
+// ---------------------------------------------------------------------------
 export async function trackEvent(
   eventName: string,
   params?: Record<string, string | number | boolean>,
 ) {
   try {
-    // ── Web: Firebase Analytics (web SDK) ───────────────────────────────────
-    const analytics = await getAnalyticsInstance();
-    if (analytics) {
-      logEvent(analytics, eventName, params);
-    }
-
-    // ── Native (Android/iOS): log in dev; production needs @react-native-firebase
-    if (Platform.OS !== "web") {
-      if (__DEV__) {
+    if (Platform.OS === "web") {
+      // ── Web: Firebase JS SDK ──────────────────────────────────────────────
+      const analytics = await getWebAnalytics();
+      if (analytics) {
+        logEvent(analytics, eventName, params);
+      }
+    } else {
+      // ── Native (Android/iOS): @react-native-firebase/analytics ────────────
+      const nativeAnalytics = await getNativeAnalytics();
+      if (nativeAnalytics) {
+        await nativeAnalytics.logEvent(eventName, params ?? {});
+      } else if (__DEV__) {
+        // In Expo Go dev mode — show in console so you can verify events fire
         console.log(`[Firebase Analytics] ${eventName}`, params ?? {});
       }
-      // Production native tracking: install @react-native-firebase/analytics
-      // and add google-services.json (see FIREBASE_NATIVE_SETUP.md)
     }
   } catch {
-    // Non-fatal — analytics failures should never break the app
+    // Non-fatal — analytics failures must never break the app
   }
 }
 
+// ---------------------------------------------------------------------------
+// Firestore helpers
+// ---------------------------------------------------------------------------
 export interface PremiumRecord {
   userId: string;
   isPremium: boolean;

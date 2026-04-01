@@ -26,6 +26,7 @@
     "android": {
       "package": "enhancore.fix.ai.skin.enhancer.photo.editor",
       "versionCode": 1,
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#1A3A6B"
@@ -72,6 +73,7 @@
       ],
       "expo-font",
       "expo-web-browser",
+      "@react-native-firebase/app",
       [
         "expo-build-properties",
         {
